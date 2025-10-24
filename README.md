@@ -1,2 +1,62 @@
-# RZNAI_AGI
-reference source code for the RZNAI AGI model
+<h1 align="center">
+System and Method for an AI Agent with Reasoning Capabilities
+</h1>
+
+Abstract
+
+We introduce a new form of artificial intelligence that is capable of carrying out reasoning processes, making it possible for an AI agent to mentally investigate scenarios and form a plan of action in order to both achieve the Achieve State(s) (“correct decision(s)”) and avoid the Avoid State(s) (“incorrect decision(s)”).
+
+Claims:
+
+1. We give the AGI agent the ability to read from the Knowledge Bank by allocating a bit in the Output Unit we call the Output Recall Bit which triggers a lookup of a specific consequent Recall Unit that is mapped to by a (state, action) pair.  
+2. To read from recall we construct boolean 2-satisfiability instances from the Knowledge Bank and solve for arriving at each of the Achieve State(s) by encoding one clause per Achieve State 2-SAT instance that forces the current state C to be true in the form (C | F) and forces said Achieve State S to be true in the form (S | F).  
+3. To read from recall we construct boolean 2-satisfiability instances from the Knowledge Bank and solve for evading each of the Avoid State(s) by encoding one clause per Avoid State 2-SAT instance that forces the current state C to be true in the form (C | F) and forces said Avoid State S’ to be true in the form (S’ | F).
+
+Specification
+
+Definitions:
+
+1. Input Unit: This input unit is uniform in size, consisting of a set number of bits.  
+2. Current Input: The Input Unit representing the most recent sensory or recall input.  
+3. Input Unit Format: The assignments of the bits in the Input Unit.  
+4. Input Recall Bit: A bit in the Input Unit Format indicating input is from knowledge bank data.  
+5. Input Queue: A series of one or more Input Units, where when one queues in, the last queues off.  
+6. Past Inputs: Input Units absent of the Current Input in the Input Queue in chronological order.  
+7. STM CTX: Short-term memory context, a neural network output formed from Past Inputs.  
+8. Knowledge Bank- An ordered collection of input units that can be recalled from.  
+9. Knowledge Bank Format- The coding of Input Units associated with actions for a given Input Unit.  
+10. Output Unit: An action to take, formed from the neural network that receives the input unit.  
+11. Output Unit Format: The assignment of the bits in the Output Unit.  
+12. Neural Network: A neural network that accepts the Input Queue and resolves it to a hash.  
+13. Operator: An entity that is capable of carrying out some sort of action, such as a servo controller.  
+14. Output Target: An Operator that accepts a parameter from an Output Unit sent to it.  
+15. Action Network: A router accepts the Output Unit and sends parameters to Output Targets.  
+16. Recall Operator: A knowledge bank system traversable by the AI agent with cognitive actions.  
+17. Recall Unit: A sequence of one or more bits of fixed size representing knowledge bank data.  
+18. Recall Unit Format: The Assignment of the bits of the Recall Unit.  
+19. Output Recall Bit: A bit in the Output Unit Format stating to read Input Unit from knowledge bank.  
+20. Action Sequence: A series of one or more bits in the Output Unit used to address an Operator.  
+21. Utility Sequence: The zero or more bits in the Action Sequence absent of the Output Recall Bit.  
+22. Parameter Sequence: The portion of the output unit absent the action sequence.  
+23. Achieve State(s): Target(s) for the AI agent to achieve, arrived at by making the correct decision(s).  
+24. Avoid State(s): Target(s) for the AI agent to avoid, arrived at by making the incorrect decision(s).
+
+Description:
+
+We receive input from either recall (from the knowledge bank) or from one or more sensors. An input read by recall from the knowledge bank has already been hashed, so we don’t hash it again to avoid corrupting its data integrity. We hash sensory input to address a specific location in the knowledge bank. There are two options for the hash. Option 1 is with a hash function of your choice, such as SHA-256. This results in a static location in the knowledge bank representing a static input from either recall or sensory. Option 2 is an approach using modified artificial neurons. This option allows a knowledge bank location to be reassigned when an input is experienced fewer times than other inputs.
+
+For option 2, we discuss the modified artificial neural network approach. We introduce a neural network composed entirely of signed integers. We compose successive layers of integral artificial neurons which are the analog of the hidden layers used in floating point approaches. The first layer receives the input and the last layer sends output bit signals to the Output Unit. An artificial neuron is composed of a series of signed integer weights that refer to the input bit signals leading from it to the next layer as well as indicators for which artificial neurons in the next layer are addressed by the output bit signals. We select a number of these integral artificial neurons for each of the layers and a number of hidden layers in between. Half of the integral artificial neurons of a given layer send negative integer values to the next layer and half send positive integer values to the next layer. The threshold for an integral artificial neuron to “fire” (meaning send its outputs to the next layer) is 0 or higher. To test whether a firing of a given artificial neuron occurs, we take the sum of all the integers from all the previous layer’s firing (or in the case of the first layer, from the Input Unit). When an integral artificial neuron is determined to “fire”, we take all the weights from all of the previous layer’s firing artificial neurons and increment them so that positive artificial neuron integer weights increase by one and the negative artificial neuron integer weights decrease by one (get one more step away from zero on the negative side). We select a number of cycles of the system to decrement all weights of all integral artificial neurons so that positive weights decrease by one and negative weights increase by one (get one step closer to zero on the negative side). When an integral artificial neuron weight reaches zero, we “rewire” the artificial neuron to address a different artificial neuron of the next layer in the manner of your choice, whether round-robin, random, or some other method. We select a nonzero weight for this new connection. Observe that for this to occur, our artificial neurons wire to the next layer sparsely, meaning that not all neurons from a layer are addressed by any neuron of the previous layer.
+
+Once we have obtained our hash of the Current Input, we conjoin this to the end of the Input Queue and dequeue the oldest input from the beginning of the Input Queue. This is our short-term memory. We then perform another hash of the entire Input Queue, again either using option 1, using a hash of your choice, or option 2, using an additional neural network. With the hash of the entire Input Queue, we then seek to obtain an Output Unit. The Output Unit consists of an Action Sequence and a Parameter Sequence. This is the part of the cycle which addresses motivation and the Achieve State. When an Achieve State is reached, its identity is marked in the knowledge bank, either with an indicator bit in the location of the knowledge bank, or a database consisting of locations in the knowledge bank that, when reached last time, resulted in the Achieve State. This indicator is the Positive Feedback that the AGI needs in order to make decisions. The Knowledge Bank format appears as follows, with the bits representing a given Action Sequence conjoined to the given Parameter Sequence to form a composite unit:
+
+Input Hash A \- Action Sequence 0 \-\> Location X  
+Input Hash A \- Action Sequence 1 \-\> Location Y  
+Input Hash A \- Action Sequence 2 \-\> Location Z
+
+Locations X, Y, and Z contain hashes of inputs reached when Action Sequences 0, 1, and 2 were performed after Input Hash A, respectively.
+
+This is a logical implication in the form of (JK-\>P) && (JL-\>Q) && (JM-\>R), which can be represented in 2CNF (conjunctive normal form) (\~P | JK) && (\~Q | JL) && (\~R | JM). A 2SAT instance can be solved in linear time. If an action sequence is found that leads to an Achieve State, the next action to perform is the first action branching from the current state (current location in the Knowledge Bank) to the next state in the sequence eventually leading to an Achieve State. We repeat for all Achieve State(s) in the system and we are left with action/step pairs. We repeat for all Avoid State(s) in the system and we are again left with action/step pairs.
+
+To select the most appropriate action, we find action matches between the Achieve action/step pairs and the Avoid action/step pairs where the number of steps in the Avoid action/step pair is less than or equal to the number of steps in the matching Achieve action/step pairs. We eliminate these actions as options. We also eliminate all other Avoid actions from action/step pairs that don’t match any actions from the Achieve action/step pairs. If two or more Achieve States remain and are available from the current state, the one with the fewest intermediate states is selected. If there are multiple sequences leading to an Achieve State that are all tied for the fewest intermediate states, one is chosen at random. If no Achieve State action/step pairs are available, an action to perform is chosen at random from the remaining actions that have not been eliminated as possibilities. If no actions remain available, we select the action/step pair that results in the greatest number of steps before an Avoid State is reached. The output from this 2CNF solver portion of the cycle is the Output Unit, which consists of the Output Recall Bit, the Action Sequence, and the Parameter Sequence.
+
+One of the output bits is a recall bit where the AGI reads from its knowledge bank based on the portion of the output unit contained in the rest of the output unit (the Utility Sequence). For the AGI to perform tasks such as controlling robotics or outputting to a display terminal, there will be a portion of the Output Unit that contains the Utility Sequence. This Utility Sequence is then parsed so that the remainder of the Output Unit received from the 2CNF logic solver- the Parameter Sequence- is sent to the correct Output Target as identified by the Action Sequence from the solution of the 2CNF instance from the prior step of the cycle. The recall action accepts the Action Sequence and the Parameter Sequence from the Output Unit and uses that to address a location in the Knowledge Bank. The data from this location is fetched and sent into the input as the new Current Input. It is worth noting that the Knowledge Bank is updated with every single cycle with a location within the Knowledge Bank vectoring with an action to another location, possibly a new location, to reflect a dynamic world. If the recall bit is not set in the Output Unit, then the Parameter Sequence is sent to the Output Target addressed by the Action Sequence, and the action is performed according to the Parameter Sequence, and input comes from the current sensory source to begin the next cycle.
