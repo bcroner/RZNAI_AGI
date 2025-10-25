@@ -10,6 +10,16 @@ typedef struct Dict_Entry_tag {
 
 } Dict_Entry ;
 
+// integer neural network layer
+
+typedef struct IntNNL_tag {
+
+	__int32 ** weights;
+
+	bool * firings;
+
+} IntNNL;
+
 Dict_Entry** create_dict(__int64 prime_sz);
 void create_dict_entry(Dict_Entry ** d, __int64 prime_sz, unsigned __int64 sa, unsigned __int32 vs);
 void remove_dict_entry(Dict_Entry** d, __int64 prime_sz, unsigned __int64 sa);
