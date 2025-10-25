@@ -3,9 +3,9 @@
 
 typedef struct Dict_Entry_tag {
 
-	unsigned __int32 init_state;
-	unsigned __int32 action_out;
-	unsigned __int32 vect_state;
+	__int32 init_state;
+	__int32 action_out;
+	__int32 vect_state;
 
 	Dict_Entry_tag* next;
 
@@ -53,14 +53,19 @@ typedef struct AGI_Sys_tag {
 } AGI_Sys;
 
 Dict_Entry** create_dict(__int64 prime_sz);
-void create_dict_entry(Dict_Entry ** d, __int64 prime_sz, unsigned __int64 sa, unsigned __int32 vs);
-void remove_dict_entry(Dict_Entry** d, __int64 prime_sz, unsigned __int64 sa);
-unsigned __int64* simp_vector_create(__int64 init_sz);
-unsigned __int64 simp_vector_read(unsigned __int64 * v, __int64 vtop, __int64 vcap, __int64 loc);
-void simp_vector_append(unsigned __int64** v, __int64 *vtop, __int64 *vcap, unsigned __int64 data);
-unsigned __int64 * simp_stack_create(__int64 * tos);
-unsigned __int64 simp_stack_pop(unsigned __int64* s, __int64* tos, __int64 vtop, __int64 vcap);
-void simp_stack_push(unsigned __int64** s, __int64* tos, __int64* vcap, __int64 data);
-void instantiate();
+void create_dict_entry(Dict_Entry ** d, __int64 prime_sz, __int32 is, __int32 oa, __int32 vs);
+void remove_dict_entry(Dict_Entry ** d, __int64 prime_sz, __int32 is, __int32 oa);
+__int32* simp_vector_create(__int32 init_sz);
+__int32 simp_vector_read(__int32 * v, __int32 vtop, __int32 vcap, __int32 loc);
+void simp_vector_append(__int32** v, __int32 *vtop, __int32 *vcap, __int32 data);
+__int32 * simp_stack_create(__int32 * vtop);
+__int32 simp_stack_pop(__int32* s, __int32 *vtop, __int32 vcap);
+void simp_stack_push(__int32 ** s, __int32 *vop, __int32* vcap, __int32 data);
+void addEdges(AGI_Sys* stm, __int32 a, __int32 b);
+void addEdgesInverse(AGI_Sys* stm, __int32 a, __int32 b);
+void dfsFirst(AGI_Sys* stm, __int32 u);
+void dfsSecond(AGI_Sys* stm, __int32 u);
+void is2Satisfiable(AGI_Sys* stm, __int32 n, __int32 m, __int32 a[], __int32 b[]);
+AGI_Sys * instantiate();
 
 #endif

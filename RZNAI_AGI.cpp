@@ -8,14 +8,14 @@
 
 using namespace std;
 
-unsigned __int64* simp_vector_create (__int64 init_sz) {
+__int32* simp_vector_create (__int32 init_sz) {
 
-    unsigned __int64* ret = new unsigned __int64[init_sz];
+    __int32* ret = new __int32[init_sz];
     return ret;
 
 }
 
-unsigned __int64 simp_vector_read(unsigned __int64* v, __int64 vtop, __int64 vcap, __int64 loc) {
+__int32 simp_vector_read(__int32* v, __int32 vtop, __int32 vcap, __int32 loc) {
 
     if (loc > vtop)
         return 0;
@@ -23,7 +23,7 @@ unsigned __int64 simp_vector_read(unsigned __int64* v, __int64 vtop, __int64 vca
     return v[loc];
 }
 
-void simp_vector_append(unsigned __int64** v, __int64 * vtop, __int64 * vcap, unsigned __int64 data) {
+void simp_vector_append(__int32** v, __int32 * vtop, __int32 * vcap, __int32 data) {
 
     *vtop = *vtop + 1;
 
@@ -42,27 +42,27 @@ void simp_vector_append(unsigned __int64** v, __int64 * vtop, __int64 * vcap, un
 
 }
 
-unsigned __int64 * simp_stack_create(__int64 * tos) {
+__int32 * simp_stack_create(__int32 * vtop) {
 
-    *tos = -1;
+    *vtop = -1;
     return simp_vector_create(16);
 
 }
 
-unsigned __int64 simp_stack_pop(unsigned __int64* s, __int64* tos, __int64 vtop, __int64 vcap) {
+__int32 simp_stack_pop(__int32* s, __int32 * vtop, __int32 vcap) {
 
-    if (*tos == -1)
+    if (*vtop == -1)
         return 0;
     else {
-        *tos = *tos - 1;
-        return simp_vector_read (s, vtop, vcap, *tos + 1);
+        *vtop = *vtop - 1;
+        return simp_vector_read (s, *vtop, vcap, *vtop + 1);
     }
 }
 
-void simp_stack_push(unsigned __int64** s, __int64* tos, __int64* vcap, __int64 data) {
+void simp_stack_push(__int32** s, __int32* vtop, __int32* vcap, __int32 data) {
 
-    simp_vector_append(s, tos, vcap, data);
-    *tos = *tos + 1;
+    simp_vector_append(s, vtop, vcap, data);
+    *vtop = *vtop + 1;
 
 }
 
@@ -77,19 +77,19 @@ void simp_stack_push(unsigned __int64** s, __int64* tos, __int64* vcap, __int64 
 // https://www.geeksforgeeks.org/strongly-connected-components/
 
 // adds edges to form the original graph
-void addEdges(AGI_Sys * stm, unsigned __int32 a, unsigned __int32 b)
+void addEdges(AGI_Sys * stm, __int32 a, __int32 b)
 {
-    simp_stack_push ( stm->adj[a], b);
+    simp_stack_push ( & (stm->adj[a]), & (stm->adj_top), & (stm->adj_cap), b);
 }
 
 // add edges to form the inverse graph
-void addEdgesInverse(AGI_Sys* stm, unsigned __int32 a, unsigned __int32 b)
+void addEdgesInverse(AGI_Sys* stm, __int32 a, __int32 b)
 {
-    simp_stack_push ( stm->adjInv[b], a);
+    simp_stack_push ( & (stm->adjInv[b]), & (stm->adjInv_top), & (stm->adjInv_cap), a);
 }
 
 // for STEP 1 of Kosaraju's Algorithm
-void dfsFirst(AGI_Sys* stm, unsigned __int32 u)
+void dfsFirst(AGI_Sys* stm, __int32 u)
 {
     if (stm->visited[u])
         return;
@@ -97,13 +97,13 @@ void dfsFirst(AGI_Sys* stm, unsigned __int32 u)
     stm->visited[u] = 1;
 
     for (int i = 0; i < stm->adj_sz[u]; i++)
-        dfsFirst(stm->adj[u][i]);
+        dfsFirst(stm, stm->adj[u][i]);
 
-    simp_stack_push(stm, u);
+    simp_stack_push(stm->Stack, & (stm->Stack_top), & (stm->Stack_cap), u);
 }
 
 // for STEP 2 of Kosaraju's Algorithm
-void dfsSecond(AGI_Sys* stm, unsigned __int32 u)
+void dfsSecond(AGI_Sys* stm, __int32 u)
 {
     if (stm->visitedInv[u])
         return;
@@ -111,13 +111,13 @@ void dfsSecond(AGI_Sys* stm, unsigned __int32 u)
     stm->visitedInv[u] = 1;
 
     for (int i = 0; i < stm->adjInv_sz[u]; i++)
-        dfsSecond(stm->adjInv[u][i]);
+        dfsSecond(stm, stm->adjInv[u][i]);
 
     stm->scc[u] = stm->counter;
 }
 
 // function to check 2-Satisfiability
-void is2Satisfiable(AGI_Sys* stm, unsigned __int32 n, unsigned __int32 m, unsigned __int32 a[], unsigned __int32 b[])
+void is2Satisfiable(AGI_Sys* stm, __int32 n, __int32 m, __int32 a[], __int32 b[])
 {
     // adding edges to the graph
     for (int i = 0; i < m; i++)
@@ -171,8 +171,8 @@ void is2Satisfiable(AGI_Sys* stm, unsigned __int32 n, unsigned __int32 m, unsign
     // array scc[] stores the corresponding value
     while (stm->Stack_top != -1)
     {
-        int n = stm->Stack[stm->Stack_top];
-        simp_stack_pop(stm->Stack);
+        int n = *stm->Stack[stm->Stack_top];
+        simp_stack_pop(*stm->Stack, & (stm->Stack_top), stm->Stack_cap);
 
         if (!stm->visitedInv[n])
         {
@@ -216,7 +216,7 @@ Dict_Entry** create_dict (__int64 prime_sz) {
 
 }
 
-void create_dict_entry(Dict_Entry** d, __int64 prime_sz, unsigned __int32 is, unsigned __int32 ao, unsigned __int32 vs) {
+void create_dict_entry(Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao, __int32 vs) {
 
     Dict_Entry* p = d [is % prime_sz];
 
@@ -237,7 +237,7 @@ void create_dict_entry(Dict_Entry** d, __int64 prime_sz, unsigned __int32 is, un
 
 }
 
-void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, unsigned __int32 is, unsigned __int32 ao) {
+void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao) {
 
     Dict_Entry* p = d[is % prime_sz];
 
@@ -255,7 +255,7 @@ void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, unsigned __int32 is, u
 
 }
 
-void instantiate() {
+AGI_Sys * instantiate() {
 
 }
 
