@@ -257,6 +257,8 @@ void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao
 
 AGI_Sys * instantiate() {
 
+    return new AGI_Sys();
+
 }
 
 //  Driver function to test above functions
@@ -283,9 +285,11 @@ int main()
     int a[] = { 1, -2, -1, 3, -3, -4, -3 };
     int b[] = { 2, 3, -2, 4, 5, -5, 4 };
 
+    AGI_Sys * stm = instantiate();
+
     // We have considered the same example for which
     // Implication Graph was made
-    is2Satisfiable(n, m, a, b);
+    is2Satisfiable(stm, n, m, a, b);
 
     return 0;
 }
