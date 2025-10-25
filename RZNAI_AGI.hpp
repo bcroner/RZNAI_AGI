@@ -33,9 +33,12 @@ typedef struct AGI_Sys_tag {
 
 	__int32** KB_2CNF;
 
-	__int32 * Stack;
-	__int32 * adj;
-	__int32 * adjInv;
+	__int32 ** Stack;
+	__int32 Stack_top;
+	__int32 ** adj;
+	__int32 ** adjInv;
+	__int32* adj_sz;
+	__int32* adjInv_sz;
 	bool * visited;
 	bool * visitedInv;
 	__int32 * scc;
