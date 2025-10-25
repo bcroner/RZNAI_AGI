@@ -20,6 +20,27 @@ typedef struct IntNNL_tag {
 
 } IntNNL;
 
+typedef struct AGI_Sys_tag {
+
+	unsigned __int64* Current_Input;
+	unsigned __int64* Output_Unit;
+
+	IntNNL* first;
+	IntNNL* last;
+	IntNNL** hidden;
+
+	Dict_Entry* Knowledge_Bank;
+
+	__int32** KB_2CNF;
+
+	__int32 * Stack;
+	__int32 * adj;
+	__int32 * adjInv;
+	bool * visited;
+	bool * visitedInv;
+
+} AGI_Sys;
+
 Dict_Entry** create_dict(__int64 prime_sz);
 void create_dict_entry(Dict_Entry ** d, __int64 prime_sz, unsigned __int64 sa, unsigned __int32 vs);
 void remove_dict_entry(Dict_Entry** d, __int64 prime_sz, unsigned __int64 sa);
@@ -29,5 +50,6 @@ void simp_vector_append(unsigned __int64** v, __int64 *vtop, __int64 *vcap, unsi
 unsigned __int64 * simp_stack_create(__int64 * tos);
 unsigned __int64 simp_stack_pop(unsigned __int64* s, __int64* tos, __int64 vtop, __int64 vcap);
 void simp_stack_push(unsigned __int64** s, __int64* tos, __int64* vcap, __int64 data);
+void instantiate();
 
 #endif

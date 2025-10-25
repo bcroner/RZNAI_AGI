@@ -272,7 +272,9 @@ void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, unsigned __int64 sa) {
 
 }
 
+void instantiate() {
 
+}
 
 //  Driver function to test above functions
 int main()
