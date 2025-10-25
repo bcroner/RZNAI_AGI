@@ -77,19 +77,19 @@ void simp_stack_push(unsigned __int64** s, __int64* tos, __int64* vcap, __int64 
 // https://www.geeksforgeeks.org/strongly-connected-components/
 
 // adds edges to form the original graph
-void addEdges(AGI_Sys * stm, int a, int b)
+void addEdges(AGI_Sys * stm, unsigned __int32 a, unsigned __int32 b)
 {
     simp_stack_push ( stm->adj[a], b);
 }
 
 // add edges to form the inverse graph
-void addEdgesInverse(AGI_Sys* stm, int a, int b)
+void addEdgesInverse(AGI_Sys* stm, unsigned __int32 a, unsigned __int32 b)
 {
     simp_stack_push ( stm->adjInv[b], a);
 }
 
 // for STEP 1 of Kosaraju's Algorithm
-void dfsFirst(AGI_Sys* stm, int u)
+void dfsFirst(AGI_Sys* stm, unsigned __int32 u)
 {
     if (stm->visited[u])
         return;
@@ -103,7 +103,7 @@ void dfsFirst(AGI_Sys* stm, int u)
 }
 
 // for STEP 2 of Kosaraju's Algorithm
-void dfsSecond(AGI_Sys* stm, int u)
+void dfsSecond(AGI_Sys* stm, unsigned __int32 u)
 {
     if (stm->visitedInv[u])
         return;
@@ -117,7 +117,7 @@ void dfsSecond(AGI_Sys* stm, int u)
 }
 
 // function to check 2-Satisfiability
-void is2Satisfiable(AGI_Sys* stm, int n, int m, int a[], int b[])
+void is2Satisfiable(AGI_Sys* stm, unsigned __int32 n, unsigned __int32 m, unsigned __int32 a[], unsigned __int32 b[])
 {
     // adding edges to the graph
     for (int i = 0; i < m; i++)
