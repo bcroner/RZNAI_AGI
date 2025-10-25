@@ -1,14 +1,12 @@
 // RZNAI_AGI.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
-#include <stack>
-#include <vector>
-
 #include "RZNAI_AGI.hpp"
 
 #ifndef __RZNAI_AGI_CPP__
 #define __RZNAI_AGI_CPP__
+
+using namespace std;
 
 unsigned __int64* simp_vector_create (__int64 init_sz) {
 
@@ -75,25 +73,9 @@ void simp_stack_push(unsigned __int64** s, __int64* tos, __int64* vcap, __int64 
 // expression is satisfiable using the
 // Kosaraju's Algorithm
 
-using namespace std;
-
-const int MAX = 100000;
-
 // data structures used to implement Kosaraju's
 // Algorithm. Please refer
 // https://www.geeksforgeeks.org/strongly-connected-components/
-vector<int> adj[MAX];
-vector<int> adjInv[MAX];
-bool visited[MAX];
-bool visitedInv[MAX];
-stack<int> s;
-
-// this array will store the SCC that the
-// particular node belongs to
-int scc[MAX];
-
-// counter maintains the number of the SCC
-int counter = 1;
 
 // adds edges to form the original graph
 void addEdges(int a, int b)
@@ -206,16 +188,16 @@ void is2Satisfiable(int n, int m, int a[], int b[])
         // same SCC
         if (scc[i] == scc[i + n])
         {
-            cout << "The given expression "
-                "is unsatisfiable." << endl;
+            // not satisfiable
             return;
         }
     }
 
     // no such variables x and -x exist which lie
     // in same SCC
-    cout << "The given expression is satisfiable."
-        << endl;
+    // 
+    // satisfiable
+
     return;
 }
 

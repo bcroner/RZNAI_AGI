@@ -38,6 +38,8 @@ typedef struct AGI_Sys_tag {
 	__int32 * adjInv;
 	bool * visited;
 	bool * visitedInv;
+	__int32 * scc;
+	__int32 counter;
 
 } AGI_Sys;
 
