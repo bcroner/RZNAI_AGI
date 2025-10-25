@@ -1,5 +1,5 @@
-<h1 align=”center”>  
-System and Method for an AI Agent with Reasoning Capabilities  
+<h1 align="center">
+System and Method for an AI Agent with Reasoning Capabilities
 </h1>
 
 Abstract
@@ -8,38 +8,39 @@ We introduce a new form of artificial intelligence that is capable of carrying o
 
 Claims:
 
-1. We give the AGI agent the ability to read from the Knowledge Bank by allocating a bit in the Output Unit we call the Output Recall Bit which triggers a lookup of a specific consequent Recall Unit that is mapped to by a (state, action) pair.  
-2. To read from recall we construct boolean 2-satisfiability or 3-satisfiability instances from the Knowledge Bank and solve for arriving at each of the Achieve State(s) by encoding one clause per Achieve State 2-SAT instance that forces the current state C to be true in the form (C | F) and forces said Achieve State S to be true in the form (S | F).  
-3. To read from recall we construct boolean 2-satisfiability or 3-satisfiability instances from the Knowledge Bank and solve for evading each of the Avoid State(s) by encoding one clause per Avoid State 2-SAT instance that forces the current state C to be true in the form (C | F) and forces said Avoid State S’ to be true in the form (S’ | F).
+We give the AGI agent the ability to read from the Knowledge Bank by allocating a bit in the Output Unit we call the Output Recall Bit which triggers a lookup of a specific consequent Recall Unit that is mapped to by a (state, action) pair.
+To read from recall we construct boolean 2-satisfiability or 3-satisfiability instances from the Knowledge Bank and solve for arriving at each of the Achieve State(s) by encoding one clause per Achieve State 2-SAT instance that forces the current state C to be true in the form (C | F) and forces said Achieve State S to be true in the form (S | F).
+To read from recall we construct boolean 2-satisfiability or 3-satisfiability instances from the Knowledge Bank and solve for evading each of the Avoid State(s) by encoding one clause per Avoid State 2-SAT instance that forces the current state C to be true in the form (C | F) and forces said Avoid State S’ to be true in the form (S’ | F).
+
 
 Specification
 
 Definitions:
 
-1. Input Unit: This input unit is uniform in size, consisting of a set number of bits.  
-2. Current Input: The Input Unit representing the most recent sensory or recall input.  
-3. Input Unit Format: The assignments of the bits in the Input Unit.  
-4. Input Recall Bit: A bit in the Input Unit Format indicating input is from knowledge bank data.  
-5. Input Queue: A series of one or more Input Units, where when one queues in, the last queues off.  
-6. Past Inputs: Input Units absent of the Current Input in the Input Queue in chronological order.  
-7. STM CTX: Short-term memory context, a neural network output formed from Past Inputs.  
-8. Knowledge Bank- An ordered collection of input units that can be recalled from.  
-9. Knowledge Bank Format- The coding of Input Units associated with actions for a given Input Unit.  
-10. Output Unit: An action to take, formed from the neural network that receives the input unit.  
-11. Output Unit Format: The assignment of the bits in the Output Unit.  
-12. Neural Network: A neural network that accepts the Input Queue and resolves it to a hash.  
-13. Operator: An entity that is capable of carrying out some sort of action, such as a servo controller.  
-14. Output Target: An Operator that accepts a parameter from an Output Unit sent to it.  
-15. Action Network: A router accepts the Output Unit and sends parameters to Output Targets.  
-16. Recall Operator: A knowledge bank system traversable by the AI agent with cognitive actions.  
-17. Recall Unit: A sequence of one or more bits of fixed size representing knowledge bank data.  
-18. Recall Unit Format: The Assignment of the bits of the Recall Unit.  
-19. Output Recall Bit: A bit in the Output Unit Format stating to read Input Unit from knowledge bank.  
-20. Action Sequence: A series of one or more bits in the Output Unit used to address an Operator.  
-21. Utility Sequence: The zero or more bits in the Action Sequence absent of the Output Recall Bit.  
-22. Parameter Sequence: The portion of the output unit absent the action sequence.  
-23. Achieve State(s): Target(s) for the AI agent to achieve, arrived at by making the correct decision(s).  
-24. Avoid State(s): Target(s) for the AI agent to avoid, arrived at by making the incorrect decision(s).
+Input Unit: This input unit is uniform in size, consisting of a set number of bits.
+Current Input: The Input Unit representing the most recent sensory or recall input.
+Input Unit Format: The assignments of the bits in the Input Unit.
+Input Recall Bit: A bit in the Input Unit Format indicating input is from knowledge bank data.
+Input Queue: A series of one or more Input Units, where when one queues in, the last queues off.
+Past Inputs: Input Units absent of the Current Input in the Input Queue in chronological order.
+STM CTX: Short-term memory context, a neural network output formed from Past Inputs.
+Knowledge Bank- An ordered collection of input units that can be recalled from.
+Knowledge Bank Format- The coding of Input Units associated with actions for a given Input Unit.
+Output Unit: An action to take, formed from the neural network that receives the input unit.
+Output Unit Format: The assignment of the bits in the Output Unit.
+Neural Network: A neural network that accepts the Input Queue and resolves it to a hash.
+Operator: An entity that is capable of carrying out some sort of action, such as a servo controller.
+Output Target: An Operator that accepts a parameter from an Output Unit sent to it.
+Action Network: A router accepts the Output Unit and sends parameters to Output Targets.
+Recall Operator: A knowledge bank system traversable by the AI agent with cognitive actions.
+Recall Unit: A sequence of one or more bits of fixed size representing knowledge bank data.
+Recall Unit Format: The Assignment of the bits of the Recall Unit.
+Output Recall Bit: A bit in the Output Unit Format stating to read Input Unit from knowledge bank.
+Action Sequence: A series of one or more bits in the Output Unit used to address an Operator.
+Utility Sequence: The zero or more bits in the Action Sequence absent of the Output Recall Bit.
+Parameter Sequence: The portion of the output unit absent the action sequence.
+Achieve State(s): Target(s) for the AI agent to achieve, arrived at by making the correct decision(s).
+Avoid State(s): Target(s) for the AI agent to avoid, arrived at by making the incorrect decision(s).
 
 Description:
 
@@ -51,13 +52,13 @@ If an Achieve State is reached and rewards are available, increment all positive
 
 Once we have obtained our hash of the Current Input, we conjoin this to the end of the Input Queue and dequeue the oldest input from the beginning of the Input Queue. This is our short-term memory. We then perform another hash of the entire Input Queue, again either using option 1, using a hash of your choice, or option 2, using an additional neural network. With the hash of the entire Input Queue, we then seek to obtain an Output Unit. The Output Unit consists of an Action Sequence and a Parameter Sequence. This is the part of the cycle which addresses motivation and the Achieve State. When an Achieve State is reached, its identity is marked in the knowledge bank, either with an indicator bit in the location of the knowledge bank, or a database consisting of locations in the knowledge bank that, when reached last time, resulted in the Achieve State. This indicator is the Positive Feedback that the AGI needs in order to make decisions. The Knowledge Bank format appears as follows, with the bits representing a given Action Sequence conjoined to the given Parameter Sequence to form a composite unit:
 
-Input Hash A \- Action Sequence 0 \-\> Location X  
-Input Hash A \- Action Sequence 1 \-\> Location Y  
-Input Hash A \- Action Sequence 2 \-\> Location Z
+Input Hash A - Action Sequence 0 -> Location X
+Input Hash A - Action Sequence 1 -> Location Y
+Input Hash A - Action Sequence 2 -> Location Z
 
 Locations X, Y, and Z contain hashes of inputs reached when Action Sequences 0, 1, and 2 were performed after Input Hash A, respectively.
 
-This is a logical implication in the form of (JK-\>P) && (JL-\>Q) && (JM-\>R), which can be represented in 2CNF (conjunctive normal form) (\~P | JK) && (\~Q | JL) && (\~R | JM). A 2SAT instance can be solved in linear time and a 3SAT instance can be solved quickly. If an action sequence is found that leads to an Achieve State, the next action to perform is the first action branching from the current state (current location in the Knowledge Bank) to the next state in the sequence eventually leading to an Achieve State. We repeat for all Achieve State(s) in the system and we are left with action/step pairs. We repeat for all Avoid State(s) in the system and we are again left with action/step pairs.
+This is a logical implication in the form of (JK->P) && (JL->Q) && (JM->R), which can be represented in 2CNF (conjunctive normal form) (~P | JK) && (~Q | JL) && (~R | JM). A 2SAT instance can be solved in linear time and a 3SAT instance can be solved quickly. If you elect to use the 3SAT approach, simply pad each 2CNF clause with an additional false value to force them to have exactly 3 literals. If an action sequence is found that leads to an Achieve State, the next action to perform is the first action branching from the current state (current location in the Knowledge Bank) to the next state in the sequence eventually leading to an Achieve State. We repeat for all Achieve State(s) in the system and we are left with action/step pairs. We repeat for all Avoid State(s) in the system and we are again left with action/step pairs.
 
 To select the most appropriate action, we find action matches between the Achieve action/step pairs and the Avoid action/step pairs where the number of steps in the Avoid action/step pair is less than or equal to the number of steps in the matching Achieve action/step pairs. We eliminate these actions as options. We also eliminate all other Avoid actions from action/step pairs that don’t match any actions from the Achieve action/step pairs. If two or more Achieve States remain and are available from the current state, the one with the fewest intermediate states is selected. If there are multiple sequences leading to an Achieve State that are all tied for the fewest intermediate states, one is chosen at random. If no Achieve State action/step pairs are available, an action to perform is chosen at random from the remaining actions that have not been eliminated as possibilities. If no actions remain available, we select the action/step pair that results in the greatest number of steps before an Avoid State is reached. The output from this 2CNF solver portion of the cycle is the Output Unit, which consists of the Output Recall Bit, the Action Sequence, and the Parameter Sequence.
 
