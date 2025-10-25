@@ -3,8 +3,9 @@
 
 typedef struct Dict_Entry_tag {
 
-	unsigned __int64 state_action;
-	unsigned __int32 vectored_state;
+	unsigned __int32 init_state;
+	unsigned __int32 action_out;
+	unsigned __int32 vect_state;
 
 	Dict_Entry_tag* next;
 

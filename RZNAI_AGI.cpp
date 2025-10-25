@@ -207,45 +207,47 @@ Dict_Entry** create_dict (__int64 prime_sz) {
     for (__int64 i = 0; i < prime_sz; i++) {
         ret[i] = new Dict_Entry ();
         ret[i]->next = 0;
-        ret[i]->state_action = 0;
-        ret[i]->vectored_state = 0;
+        ret[i]->init_state = 0;
+        ret[i]->action_out = 0;
+        ret[i]->vect_state = 0;
     }
 
     return ret;
 
 }
 
-void create_dict_entry(Dict_Entry** d, __int64 prime_sz, unsigned __int64 sa, unsigned __int32 vs) {
+void create_dict_entry(Dict_Entry** d, __int64 prime_sz, unsigned __int32 is, unsigned __int32 ao, unsigned __int32 vs) {
 
-    Dict_Entry* p = d [sa % prime_sz];
+    Dict_Entry* p = d [is % prime_sz];
 
-    while (p->next != NULL && p->state_action < sa)
+    while (p->next != 0 && ( p->init_state < is || (p->init_state == is && p->action_out < ao))
         p = p->next;
 
-    if (p->state_action == sa)
+    if (p->init_state == is && p->action_out == ao)
         p->vectored_state = vs;
     else {
         Dict_Entry* temp = p->next;
         p->next = new Dict_Entry();
         p = p->next;
-        p->state_action = sa;
-        p->vectored_state = vs;
+        p->init_state = is;
+        p->action_out = ao;
+        p->vect_state = vs;
         p->next = temp;
     }
 
 }
 
-void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, unsigned __int64 sa) {
+void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, unsigned __int32 is, unsigned __int32 ao) {
 
-    Dict_Entry* p = d[sa % prime_sz];
+    Dict_Entry* p = d[is % prime_sz];
 
-    if (p->next == NULL)
+    if (p->next == 0)
         return;
 
-    while (p->next->next != NULL && p->next->state_action != sa)
+    while (p->next->next != 0 && !(p->next->init_state == is && p->next->action_out == ao))
         p = p->next;
 
-    if (p->next->state_action == sa) {
+    if (p->next->init_state == is && p->next->action_out == ao) {
         Dict_Entry* dump = p->next;
         p->next = p->next->next;
         delete dump;
