@@ -1,5 +1,5 @@
-<h1 align=”center”>  
-System and Method for an AI Agent with Reasoning Capabilities  
+<h1 align="center">
+System and Method for an AI Agent with Reasoning Capabilities
 </h1>
 
 Abstract
@@ -57,7 +57,7 @@ Input Hash A \- Action Sequence 2 \-\> Location Z
 
 Locations X, Y, and Z contain hashes of inputs reached when Action Sequences 0, 1, and 2 were performed after Input Hash A, respectively.
 
-This is a logical implication in the form of (JK-\>P) && (JL-\>Q) && (JM-\>R), which can be represented in 2CNF (conjunctive normal form) (\~P | JK) && (\~Q | JL) && (\~R | JM). A 2SAT instance can be solved in linear time and a 3SAT instance can be solved quickly. If an action sequence is found that leads to an Achieve State, the next action to perform is the first action branching from the current state (current location in the Knowledge Bank) to the next state in the sequence eventually leading to an Achieve State. We repeat for all Achieve State(s) in the system and we are left with action/step pairs. We repeat for all Avoid State(s) in the system and we are again left with action/step pairs.
+This is a logical implication in the form of (JK-\>P) && (JL-\>Q) && (JM-\>R), which can be represented in 2CNF (conjunctive normal form) (\~P | JK) && (\~Q | JL) && (\~R | JM). A 2SAT instance can be solved in linear time and a 3SAT instance can be solved quickly. If you elect to use the 3SAT approach, simply pad each 2CNF clause with an additional false value to force them to have exactly 3 literals. If an action sequence is found that leads to an Achieve State, the next action to perform is the first action branching from the current state (current location in the Knowledge Bank) to the next state in the sequence eventually leading to an Achieve State. We repeat for all Achieve State(s) in the system and we are left with action/step pairs. We repeat for all Avoid State(s) in the system and we are again left with action/step pairs.
 
 To select the most appropriate action, we find action matches between the Achieve action/step pairs and the Avoid action/step pairs where the number of steps in the Avoid action/step pair is less than or equal to the number of steps in the matching Achieve action/step pairs. We eliminate these actions as options. We also eliminate all other Avoid actions from action/step pairs that don’t match any actions from the Achieve action/step pairs. If two or more Achieve States remain and are available from the current state, the one with the fewest intermediate states is selected. If there are multiple sequences leading to an Achieve State that are all tied for the fewest intermediate states, one is chosen at random. If no Achieve State action/step pairs are available, an action to perform is chosen at random from the remaining actions that have not been eliminated as possibilities. If no actions remain available, we select the action/step pair that results in the greatest number of steps before an Avoid State is reached. The output from this 2CNF solver portion of the cycle is the Output Unit, which consists of the Output Recall Bit, the Action Sequence, and the Parameter Sequence.
 
