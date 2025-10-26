@@ -35,6 +35,10 @@ typedef struct AGI_Sys_tag {
 	IntNNL* first;
 	IntNNL* last;
 	IntNNL** hidden;
+	__int32  first_sz;
+	__int32  last_sz;
+	__int32  hidden_sz;
+	__int32  hidden_ct;
 
 	Dict_Entry** Knowledge_Bank;
 	__int32 kbsz;

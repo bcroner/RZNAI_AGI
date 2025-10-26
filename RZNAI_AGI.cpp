@@ -259,6 +259,34 @@ AGI_Sys * instantiate() {
 
     AGI_Sys * ret = new AGI_Sys();
 
+    ret->first_sz = 20;
+    ret->last_sz = 20;
+    ret->hidden_sz = 40;
+    ret->hidden_ct = 20;
+
+    ret->first = new IntNNL();
+    ret->first->weights = new __int32* [ret->first_sz];
+    for (__int32 i = 0; i < ret->first_sz; i++)
+        ret->first->weights[i] = new __int32[ret->first_sz];
+
+    ret->last = new IntNNL();
+    ret->last->weights = new __int32* [ret->last_sz];
+    for (__int32 i = 0; i < ret->last_sz; i++)
+        ret->last->weights[i] = new __int32[ret->last_sz];
+
+    ret->hidden = new IntNNL * [ret->hidden_ct];
+    for (__int32 count = 0; count < ret->hidden_ct; count++) {
+        ret->hidden[count]->weights = new __int32* [ret->hidden_sz];
+        for (__int32 i = 0; i < ret->hidden_sz; i++)
+            ret->hidden[count]->weights[i] = new __int32[ret->hidden_sz];
+    }
+
+    ret->first = new IntNNL [ret->first_sz];
+    ret->last = new IntNNL [ret->last_sz];
+    ret->hidden = new IntNNL * [ret->hidden_sz];
+    for (__int32 i = 0; i < ret->hidden_ct; i++)
+        ret->hidden[i] = new IntNNL[ret->hidden_sz];
+
     ret->kbpsz = 1009;
     ret->kbsz = 0;
     ret->Knowledge_Bank = create_dict(ret->kbpsz);
@@ -294,6 +322,20 @@ void generate2SATs(AGI_Sys* stm) {
 
     for (__int32 i = 0; i <= stm->dvtop; i++) {
 
+    }
+
+}
+
+void perform_inn(AGI_Sys* stm , __int32 input) {
+
+    bool* input_b = new bool[stm->in_sz];
+
+    for (__int32 i = 0; i < stm->in_sz; i++)
+        input_b[i] = false;
+
+    for (__int32 i = 0; i < stm->in_sz; i++) {
+        input_b[i] = input & 1;
+        input = input >> 1;
     }
 
 }
