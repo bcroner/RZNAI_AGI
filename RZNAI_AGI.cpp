@@ -220,11 +220,11 @@ void create_dict_entry(Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao,
 
     Dict_Entry* p = d [is % prime_sz];
 
-    while (p->next != 0 && ( p->init_state < is || (p->init_state == is && p->action_out < ao))
+    while (p->next != 0 && ( p->init_state < is || (p->init_state == is && p->action_out < ao)))
         p = p->next;
 
     if (p->init_state == is && p->action_out == ao)
-        p->vectored_state = vs;
+        p->vect_state = vs;
     else {
         Dict_Entry* temp = p->next;
         p->next = new Dict_Entry();
@@ -257,7 +257,44 @@ void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao
 
 AGI_Sys * instantiate() {
 
-    return new AGI_Sys();
+    AGI_Sys * ret = new AGI_Sys();
+
+    ret->kbpsz = 1009;
+    ret->kbsz = 0;
+    ret->Knowledge_Bank = create_dict(ret->kbpsz);
+
+    ret->rwcap = 16;
+    ret->rwtop = -1;
+    ret->rewards = simp_vector_create(ret->rwcap);
+    ret->dvcap = 16;
+    ret->dvtop = -1;
+    ret->dsnctvs = simp_vector_create(ret->dvcap);
+
+    return ret;
+}
+
+void generate2SATs(AGI_Sys* stm) {
+
+    // create space for the rewards and disincentives
+
+    simp_vector_append(&(stm->KB_2CNF_A), &(stm->kbatop), &(stm->kbacap), 0);
+    simp_vector_append(&(stm->KB_2CNF_A), &(stm->kbatop), &(stm->kbacap), 0);
+    simp_vector_append(&(stm->KB_2CNF_B), &(stm->kbatop), &(stm->kbacap), 0);
+    simp_vector_append(&(stm->KB_2CNF_B), &(stm->kbbtop), &(stm->kbbcap), 0);
+
+    for (__int32 i = 0; i < stm->kbpsz; i++) {
+
+        Dict_Entry* d = stm->Knowledge_Bank[i];
+
+    }
+
+    for (__int32 i = 0; i <= stm->rwtop; i++) {
+
+    }
+
+    for (__int32 i = 0; i <= stm->dvtop; i++) {
+
+    }
 
 }
 
