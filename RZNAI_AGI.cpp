@@ -244,7 +244,7 @@ void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao
     if (p->next == 0)
         return;
 
-    while (p->next->next != 0 && !(p->next->init_state == is && p->next->action_out == ao))
+    while (p->next->next != 0 && (p->next->init_state == is || p->next->action_out == ao))
         p = p->next;
 
     if (p->next->init_state == is && p->next->action_out == ao) {

@@ -32,7 +32,8 @@ typedef struct AGI_Sys_tag {
 
 	Dict_Entry* Knowledge_Bank;
 
-	__int32** KB_2CNF;
+	__int32* KB_2CNF_A;
+	__int32* KB_2CNF_B;
 
 	__int32 ** Stack;
 	__int32 Stack_top;
