@@ -26,6 +26,9 @@ typedef struct AGI_Sys_tag {
 	unsigned __int64* Current_Input;
 	unsigned __int64* Output_Unit;
 
+	__int32 in_sz;
+	__int32 out_sz;
+
 	IntNNL* first;
 	IntNNL* last;
 	IntNNL** hidden;
