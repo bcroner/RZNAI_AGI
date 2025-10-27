@@ -27,10 +27,10 @@ void simp_vector_append(__int32** v, __int32 * vtop, __int32 * vcap, __int32 dat
 
     *vtop = *vtop + 1;
 
-    if (*vtop == *vcap)
+    if (*vtop < *vcap)
         *v[*vtop] = data;
     else {
-        unsigned __int64* newv = new unsigned __int64[*vcap * 2];
+        __int32* newv = new __int32[*vcap * 2];
         for (__int64 i = 0; i < *vcap * 2; i++)
             newv[i] = 0;
         for (__int64 i = 0; i < *vcap; i++)
@@ -38,6 +38,7 @@ void simp_vector_append(__int32** v, __int32 * vtop, __int32 * vcap, __int32 dat
         *vcap *= 2;
         delete[] * v;
         *v = newv;
+        *v[*vtop] = data;
     }
 
 }
