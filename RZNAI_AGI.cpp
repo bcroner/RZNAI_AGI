@@ -290,7 +290,7 @@ AGI_Sys * instantiate() {
     for (__int32 i = 0; i < ret->hidden_ct; i++)
         ret->hidden[i] = new IntNNL[ret->hidden_sz];
 
-    ret->kbpsz = 1009;
+    ret->kbpsz = 7919;
     ret->kbsz = 0;
     ret->Knowledge_Bank = create_dict(ret->kbpsz);
 
