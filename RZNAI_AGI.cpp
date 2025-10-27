@@ -259,10 +259,13 @@ AGI_Sys * instantiate() {
 
     AGI_Sys * ret = new AGI_Sys();
 
-    ret->first_sz = 20;
-    ret->last_sz = 20;
-    ret->hidden_sz = 40;
-    ret->hidden_ct = 20;
+    ret->in_sz = 16;
+    ret->out_sz = 4;
+    ret->In_Q_ct = 7;
+    ret->first_sz = ret->in_sz * ret->In_Q_ct;
+    ret->last_sz = ret->out_sz;
+    ret->hidden_sz = ret->first_sz * 2;
+    ret->hidden_ct = 16;
 
     ret->first = new IntNNL();
     ret->first->weights = new __int32* [ret->first_sz];

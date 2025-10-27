@@ -26,8 +26,12 @@ typedef struct IntNNL_tag {
 
 typedef struct AGI_Sys_tag {
 
-	unsigned __int64* Current_Input;
-	unsigned __int64* Output_Unit;
+	__int32 Current_Input;
+	__int32 Output_Unit;
+
+	__int32* Input_Queue;
+
+	__int32 In_Q_ct;
 
 	__int32 in_sz;
 	__int32 out_sz;
