@@ -344,6 +344,30 @@ void perform_inn(AGI_Sys* stm , __int32 input) {
 
 }
 
+void cycle() {
+
+    // read input
+
+    // update Knowledge Bank with (previous input state, output action) -> (newly read input)
+
+    // feed into IANN and fetch output bit sequence
+
+    // construct 2SAT instance if read from recall input bit is set to 0 and output recall bit is set to 1
+
+        // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
+        // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
+
+    // else if read from recall input bit is set to 1 and output recall bit is set to 1
+
+        // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
+        // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
+
+    // else read from sensory if output recall bit is set to 0
+
+    // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
+
+}
+
 //  Driver function to test above functions
 int main()
 {
