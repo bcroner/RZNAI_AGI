@@ -334,13 +334,13 @@ void generate2SATs(AGI_Sys* stm) {
 
 }
 
-void perform_inn(AGI_Sys* stm , __int32 * InputQueue) {
+void perform_iann(AGI_Sys* stm) {
 
     bool* input_b = new bool[stm->in_sz * stm->In_Q_ct];
 
     for (__int32 i = 0; i < stm->In_Q_ct; i++) {
 
-        __int32 temp_input = InputQueue[i];
+        __int32 temp_input = stm->Input_Queue[i];
 
         for (__int32 j = 0; j < stm->in_sz; j++) {
             input_b[i * stm->in_sz + j] = temp_input & 1;
@@ -376,7 +376,7 @@ void perform_inn(AGI_Sys* stm , __int32 * InputQueue) {
     }
 }
 
-void cycle() {
+void cycle(AGI_Sys * stm) {
 
     // read input
 

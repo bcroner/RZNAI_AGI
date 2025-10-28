@@ -96,5 +96,7 @@ void dfsSecond(AGI_Sys* stm, __int32 u);
 void is2Satisfiable(AGI_Sys* stm, __int32 n, __int32 m, __int32 a[], __int32 b[]);
 AGI_Sys * instantiate();
 void generate2SATs(AGI_Sys* stm);
+void perform_iann(AGI_Sys* stm);
+void cycle(AGI_Sys * stm);
 
 #endif
