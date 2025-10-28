@@ -334,19 +334,46 @@ void generate2SATs(AGI_Sys* stm) {
 
 }
 
-void perform_inn(AGI_Sys* stm , __int32 input) {
+void perform_inn(AGI_Sys* stm , __int32 * InputQueue) {
 
-    bool* input_b = new bool[stm->in_sz];
+    bool* input_b = new bool[stm->in_sz * stm->In_Q_ct];
 
-    for (__int32 i = 0; i < stm->in_sz; i++)
-        input_b[i] = false;
+    for (__int32 i = 0; i < stm->In_Q_ct; i++) {
 
-    for (__int32 i = 0; i < stm->in_sz; i++) {
-        input_b[i] = input & 1;
-        input = input >> 1;
+        __int32 temp_input = InputQueue[i];
+
+        for (__int32 j = 0; j < stm->in_sz; j++) {
+            input_b[i * stm->in_sz + j] = temp_input & 1;
+            temp_input >> 1;
+        }
+
     }
 
-    bool read_from_recall = input_b[0];
+    for (__int32 i = 0; i < stm->hidden_sz; i++) {
+        __int32 * weight_sums = new __int32 [stm->hidden_sz];
+        for (__int32 j = 0; j < stm->hidden_sz; j++) {
+            weight_sums[j] = 0;
+            for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+                weight_sums[stm->input_targets[j][k]] += input_b[i] ? stm->input_weights[j][k] : 0;
+            if (weight_sums[j] >= 0)
+                stm->hidden[0]->firings[j] = true;
+        }
+    }
+
+    for (__int32 count = 1; count < stm->hidden_ct; count++) {
+
+        for (__int32 i = 0; i < stm->hidden_sz; i++) {
+            __int32* weight_sums = new __int32[stm->hidden_sz];
+            for (__int32 j = 0; j < stm->hidden_sz; j++) {
+                weight_sums[j] = 0;
+                for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+                    weight_sums[stm->hidden[count - 1]->targets[j][k]] += stm->hidden [count - 1]->firings[i] ? stm->hidden [count - 1]->weights[j][k] : 0;
+                if (weight_sums[j] >= 0)
+                    stm->hidden[i]->firings[j] = true;
+            }
+        }
+
+    }
 }
 
 void cycle() {
