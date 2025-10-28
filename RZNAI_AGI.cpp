@@ -219,7 +219,7 @@ Dict_Entry** create_dict (__int64 prime_sz) {
 
 void create_dict_entry(Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao, __int32 vs) {
 
-    Dict_Entry* p = d [(is+2) % prime_sz];
+    Dict_Entry* p = d [is % prime_sz];
 
     while (p->next != 0 && ( p->init_state < is || (p->init_state == is && p->action_out < ao)))
         p = p->next;
@@ -240,7 +240,7 @@ void create_dict_entry(Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao,
 
 void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao) {
 
-    Dict_Entry* p = d[(is+2) % prime_sz];
+    Dict_Entry* p = d[is % prime_sz];
 
     if (p->next == 0)
         return;
