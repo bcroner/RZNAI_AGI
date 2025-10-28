@@ -51,13 +51,15 @@ If an Achieve State is reached and rewards are available, increment all positive
 
 When an integral artificial neuron weight reaches a pre-set limit (we use 0 in the provided source code), we “rewire” the artificial neuron to target a different artificial neuron of the next layer in the manner of your choice, whether round-robin, random, or some other method. We select a value for the weight for this new connection that is not equal to the pre-set limit that triggers our re-targeting (in the provided source code, it’s a nonzero value). Observe that for this to occur, our artificial neurons wire to the next layer sparsely, meaning that not all neurons from a layer are addressed by any neuron of the previous layer. We also take care to avoid having a neuron from one layer to target the same neuron of the next layer multiple times.
 
-Once we have obtained our hash of the Current Input, we conjoin this to the end of the Input Queue and dequeue the oldest input from the beginning of the Input Queue. This is our short-term memory. We then perform another hash of the entire Input Queue, again either using option 1, using a hash of your choice, or option 2, using an additional neural network. With the hash of the entire Input Queue, we then seek to obtain an Output Unit. The Output Unit consists of an Action Sequence and a Parameter Sequence. This is the part of the cycle which addresses motivation and the Achieve State. When an Achieve State is reached, its identity is marked in the knowledge bank, either with an indicator bit in the location of the knowledge bank, or a database consisting of locations in the knowledge bank that, when reached last time, resulted in the Achieve State. This indicator is the Positive Feedback that the AGI needs in order to make decisions. The Knowledge Bank format appears as follows, with the bits representing a given Action Sequence conjoined to the given Parameter Sequence to form a composite unit:
+Once we have obtained our Current Input, we conjoin this to the end of the Input Queue and dequeue the oldest input from the beginning of the Input Queue. This is our short-term memory. We now seek to obtain an Output Unit. The Output Unit consists of an Action Sequence and a Parameter Sequence. After the Output Unit is obtained and any actions are performed, we address motivation with the Achieve State being recorded if a reward is available and with the Avoid State being recorded if a disincentive is available.
 
-Input State A \- Action Sequence 0 \-\> Location X  
-Input State A \- Action Sequence 1 \-\> Location Y  
-Input State A \- Action Sequence 2 \-\> Location Z
+The Knowledge Bank format appears as follows, with the bits representing a given Action Sequence conjoined to the given Parameter Sequence to form a composite unit:
 
-Locations X, Y, and Z contain hashes of inputs reached when Action Sequences 0, 1, and 2 were performed after Input Hash A, respectively.
+Input State A \- Action Sequence 0 \-\> Location (Input State) X  
+Input State A \- Action Sequence 1 \-\> Location (Input State) Y  
+Input State A \- Action Sequence 2 \-\> Location (Input State) Z
+
+Locations X, Y, and Z contain the inputs reached when Action Sequences 0, 1, and 2 were performed after Input State A, respectively.
 
 This is a logical implication in the form of (JK-\>P) && (JL-\>Q) && (JM-\>R), which can be represented in 2CNF (conjunctive normal form) (\~P | JK) && (\~Q | JL) && (\~R | JM). A 2SAT instance can be solved in linear time and a 3SAT instance can be solved quickly. If you elect to use the 3SAT approach, simply pad each 2CNF clause with an additional false value to force them to have exactly 3 literals. If an action sequence is found that leads to an Achieve State, the next action to perform is the first action branching from the current state (current location in the Knowledge Bank) to the next state in the sequence eventually leading to an Achieve State. We repeat for all Achieve State(s) in the system and we are left with action/step pairs. We repeat for all Avoid State(s) in the system and we are again left with action/step pairs.
 
