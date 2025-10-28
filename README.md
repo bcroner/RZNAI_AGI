@@ -10,7 +10,7 @@ Claims:
 
 1. We give the AGI agent the ability to read from the Knowledge Bank by allocating a bit in the Output Unit we call the Output Recall Bit which triggers a lookup of a specific consequent recalled Unit (an Input Unit) that is mapped to by a (state, action) pair and we also allocate a bit in the Input Unit to indicate whether the incoming Input Unit is a result of the recall operation.  
 2. To read from recall we construct boolean 2-satisfiability or 3-satisfiability instances from the Knowledge Bank and solve for arriving at each of the Achieve State(s) by encoding one clause per Achieve State 2-SAT instance that forces the current state C to be true in the form (C | F), where F is the false truth value, and forces said Achieve State S to be true in the form (S | F). Also to read from recall we construct boolean 2-satisfiability or 3-satisfiability instances from the Knowledge Bank and solve for evading each of the Avoid State(s) by encoding one clause per Avoid State 2-SAT instance that forces the current state C to be true in the form (C | F) and forces said Avoid State S’ to be true in the form (S’ | F).  
-3. We re-target an artificial neuron from a given layer when it fires an output to a new artificial neuron’s input on the subsequent layer and the weight of the firing artificial neuron reaches a pre-set limit (we use 0 for this level in the provided reference source code).
+3. We re-target an artificial neuron from a given layer when it fires an output to an artificial neuron’s input on the subsequent layer and the weight of the firing artificial neuron reaches a pre-set limit (we use 0 for this level in the provided reference source code).
 
 Specification
 
