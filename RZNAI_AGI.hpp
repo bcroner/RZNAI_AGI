@@ -19,6 +19,7 @@ typedef struct Dict_Entry_tag {
 typedef struct IntNNL_tag {
 
 	__int32 ** weights;
+	__int32 ** targets;
 
 	bool * firings;
 
@@ -36,11 +37,10 @@ typedef struct AGI_Sys_tag {
 	__int32 in_sz;
 	__int32 out_sz;
 
-	IntNNL* first;
-	IntNNL* last;
+	__int32** input_weights;
+	__int32** input_targets;
+
 	IntNNL** hidden;
-	__int32  first_sz;
-	__int32  last_sz;
 	__int32  hidden_sz;
 	__int32  hidden_ct;
 
