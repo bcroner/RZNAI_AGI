@@ -273,16 +273,29 @@ AGI_Sys * instantiate() {
     for (__int32 i = 0; i < ret->first_sz; i++)
         ret->first->weights[i] = new __int32[ret->first_sz];
 
+    ret->first->firings = new bool[ret->first_sz];
+    for (__int32 i = 0; i < ret->first_sz; i++)
+        ret->first->firings[i] = false;
+
     ret->last = new IntNNL();
     ret->last->weights = new __int32* [ret->last_sz];
     for (__int32 i = 0; i < ret->last_sz; i++)
         ret->last->weights[i] = new __int32[ret->last_sz];
+
+    ret->last->firings = new bool[ret->last_sz];
+    for (__int32 i = 0; i < ret->last_sz; i++)
+        ret->last->firings[i] = false;
 
     ret->hidden = new IntNNL * [ret->hidden_ct];
     for (__int32 count = 0; count < ret->hidden_ct; count++) {
         ret->hidden[count]->weights = new __int32* [ret->hidden_sz];
         for (__int32 i = 0; i < ret->hidden_sz; i++)
             ret->hidden[count]->weights[i] = new __int32[ret->hidden_sz];
+
+        ret->hidden[count]->firings = new bool [ret->hidden_ct];
+
+        for (__int32 i = 0; i < ret->hidden_ct; i++)
+            ret->hidden[count]->firings[i] = false;
     }
 
     ret->first = new IntNNL [ret->first_sz];
