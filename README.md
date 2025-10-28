@@ -22,24 +22,24 @@ Definitions:
 4. Input Recall Bit: A bit in the Input Unit Format indicating input is from knowledge bank data.  
 5. Input Queue: A series of one or more Input Units, where when one queues in, the last queues off.  
 6. Past Inputs: Input Units absent of the Current Input in the Input Queue in chronological order.  
-7. STM CTX: Short-term memory context, a neural network output formed from Past Inputs.  
-8. Knowledge Bank- An ordered collection of input units that can be recalled from.  
-9. Knowledge Bank Format- The coding of Input Units associated with actions for a given Input Unit.  
-10. Output Unit: An action to take, formed from the neural network that receives the input unit.  
-11. Output Unit Format: The assignment of the bits in the Output Unit.  
-12. Neural Network: A neural network that accepts the Input Queue and resolves it to a hash.  
-13. Operator: An entity that is capable of carrying out some sort of action, such as a servo controller.  
-14. Output Target: An Operator that accepts a parameter from an Output Unit sent to it.  
-15. Action Network: A router accepts the Output Unit and sends parameters to Output Targets.  
-16. Recall Operator: A knowledge bank system traversable by the AI agent with cognitive actions.  
-17. Recall Unit: A sequence of one or more bits of fixed size representing knowledge bank data.  
-18. Recall Unit Format: The Assignment of the bits of the Recall Unit.  
-19. Output Recall Bit: A bit in the Output Unit Format stating to read Input Unit from knowledge bank.  
-20. Action Sequence: A series of one or more bits in the Output Unit used to address an Operator.  
-21. Utility Sequence: The zero or more bits in the Action Sequence absent of the Output Recall Bit.  
-22. Parameter Sequence: The portion of the output unit absent the action sequence.  
-23. Achieve State(s): Target(s) for the AI agent to achieve, arrived at by making the correct decision(s).  
-24. Avoid State(s): Target(s) for the AI agent to avoid, arrived at by making the incorrect decision(s).
+7. Knowledge Bank- An ordered collection of input units that can be recalled from.  
+8. Knowledge Bank Format- The coding of Input Units associated with actions for a given Input Unit.  
+9. Output Unit: An action to take, formed from the neural network that receives the input unit.  
+10. Output Unit Format: The assignment of the bits in the Output Unit.  
+11. Neural Network: A neural network that accepts the Input Queue and resolves it to an Output Unit.  
+12. Operator: An entity that is capable of carrying out some sort of action, such as a servo controller.  
+13. Output Target: An Operator that accepts a parameter from an Output Unit sent to it.  
+14. Recall Operator: A knowledge bank system traversable by the AI agent with cognitive actions.  
+15. Recall Unit: A sequence of one or more bits of fixed size representing knowledge bank data.  
+16. Recall Unit Format: The Assignment of the bits of the Recall Unit.  
+17. Output Recall Bit: A bit in the Output Unit Format stating to read Input Unit from knowledge bank.  
+18. Action Sequence: A series of one or more bits in the Output Unit used to address an Operator.  
+19. Utility Sequence: The zero or more bits in the Action Sequence absent of the Output Recall Bit.  
+20. Parameter Sequence: The portion of the output unit absent the action sequence.  
+21. Achieve State(s): Target(s) for the AI agent to achieve, arrived at by making the correct decision(s).  
+22. Avoid State(s): Target(s) for the AI agent to avoid, arrived at by making the incorrect decision(s).
+
+Note that many of these terms only appear in the provided reference source code.
 
 Description:
 
