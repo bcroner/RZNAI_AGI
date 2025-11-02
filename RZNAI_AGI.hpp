@@ -89,13 +89,8 @@ void simp_vector_append(__int32** v, __int32 *vtop, __int32 *vcap, __int32 data)
 __int32 * simp_stack_create(__int32 * vtop);
 __int32 simp_stack_pop(__int32* s, __int32 *vtop, __int32 vcap);
 void simp_stack_push(__int32 ** s, __int32 *vop, __int32* vcap, __int32 data);
-void addEdges(AGI_Sys* stm, __int32 a, __int32 b);
-void addEdgesInverse(AGI_Sys* stm, __int32 a, __int32 b);
-void dfsFirst(AGI_Sys* stm, __int32 u);
-void dfsSecond(AGI_Sys* stm, __int32 u);
-void is2Satisfiable(AGI_Sys* stm, __int32 n, __int32 m, __int32 a[], __int32 b[]);
 AGI_Sys * instantiate();
-void generate2SATs(AGI_Sys* stm);
+void generateBFSs(AGI_Sys* stm);
 void perform_iann(AGI_Sys* stm);
 void cycle(AGI_Sys * stm);
 

@@ -67,140 +67,6 @@ void simp_stack_push(__int32** s, __int32* vtop, __int32* vcap, __int32 data) {
 
 }
 
-//https://www.geeksforgeeks.org/dsa/2-satisfiability-2-sat-problem/
-
-// C++ implementation to find if the given
-// expression is satisfiable using the
-// Kosaraju's Algorithm
-
-// data structures used to implement Kosaraju's
-// Algorithm. Please refer
-// https://www.geeksforgeeks.org/strongly-connected-components/
-
-// adds edges to form the original graph
-void addEdges(AGI_Sys * stm, __int32 a, __int32 b)
-{
-    simp_stack_push ( & (stm->adj[a]), & (stm->adj_top), & (stm->adj_cap), b);
-}
-
-// add edges to form the inverse graph
-void addEdgesInverse(AGI_Sys* stm, __int32 a, __int32 b)
-{
-    simp_stack_push ( & (stm->adjInv[b]), & (stm->adjInv_top), & (stm->adjInv_cap), a);
-}
-
-// for STEP 1 of Kosaraju's Algorithm
-void dfsFirst(AGI_Sys* stm, __int32 u)
-{
-    if (stm->visited[u])
-        return;
-
-    stm->visited[u] = 1;
-
-    for (int i = 0; i < stm->adj_sz[u]; i++)
-        dfsFirst(stm, stm->adj[u][i]);
-
-    simp_stack_push(stm->Stack, & (stm->Stack_top), & (stm->Stack_cap), u);
-}
-
-// for STEP 2 of Kosaraju's Algorithm
-void dfsSecond(AGI_Sys* stm, __int32 u)
-{
-    if (stm->visitedInv[u])
-        return;
-
-    stm->visitedInv[u] = 1;
-
-    for (int i = 0; i < stm->adjInv_sz[u]; i++)
-        dfsSecond(stm, stm->adjInv[u][i]);
-
-    stm->scc[u] = stm->counter;
-}
-
-// function to check 2-Satisfiability
-void is2Satisfiable(AGI_Sys* stm, __int32 n, __int32 m, __int32 a[], __int32 b[])
-{
-    // adding edges to the graph
-    for (int i = 0; i < m; i++)
-    {
-        // variable x is mapped to x
-        // variable -x is mapped to n+x = n-(-x)
-
-        // for a[i] or b[i], addEdges -a[i] -> b[i]
-        // AND -b[i] -> a[i]
-        if (a[i] > 0 && b[i] > 0)
-        {
-            addEdges(stm, a[i] + n, b[i]);
-            addEdgesInverse(stm, a[i] + n, b[i]);
-            addEdges(stm, b[i] + n, a[i]);
-            addEdgesInverse(stm, b[i] + n, a[i]);
-        }
-
-        else if (a[i] > 0 && b[i] < 0)
-        {
-            addEdges(stm, a[i] + n, n - b[i]);
-            addEdgesInverse(stm, a[i] + n, n - b[i]);
-            addEdges(stm, -b[i], a[i]);
-            addEdgesInverse(stm, -b[i], a[i]);
-        }
-
-        else if (a[i] < 0 && b[i]>0)
-        {
-            addEdges(stm, -a[i], b[i]);
-            addEdgesInverse(stm, -a[i], b[i]);
-            addEdges(stm, b[i] + n, n - a[i]);
-            addEdgesInverse(stm, b[i] + n, n - a[i]);
-        }
-
-        else
-        {
-            addEdges(stm, -a[i], n - b[i]);
-            addEdgesInverse(stm, -a[i], n - b[i]);
-            addEdges(stm, -b[i], n - a[i]);
-            addEdgesInverse(stm, -b[i], n - a[i]);
-        }
-    }
-
-    // STEP 1 of Kosaraju's Algorithm which
-    // traverses the original graph
-    for (int i = 1; i <= 2 * n; i++)
-        if (!stm->visited[i])
-            dfsFirst(stm, i);
-
-    // STEP 2 of Kosaraju's Algorithm which
-    // traverses the inverse graph. After this,
-    // array scc[] stores the corresponding value
-    while (stm->Stack_top != -1)
-    {
-        int n = *stm->Stack[stm->Stack_top];
-        simp_stack_pop(*stm->Stack, & (stm->Stack_top), stm->Stack_cap);
-
-        if (!stm->visitedInv[n])
-        {
-            dfsSecond(stm, n);
-            stm->counter++;
-        }
-    }
-
-    for (int i = 1; i <= n; i++)
-    {
-        // for any 2 variable x and -x lie in
-        // same SCC
-        if (stm->scc[i] == stm->scc[i + n])
-        {
-            // not satisfiable
-            return;
-        }
-    }
-
-    // no such variables x and -x exist which lie
-    // in same SCC
-    // 
-    // satisfiable
-
-    return;
-}
-
 Dict_Entry** create_dict (__int64 prime_sz) {
 
     Dict_Entry** ret = new Dict_Entry * [prime_sz];
@@ -309,7 +175,7 @@ AGI_Sys * instantiate() {
     return ret;
 }
 
-void generate2SATs(AGI_Sys* stm) {
+void generateBFSs(AGI_Sys* stm) {
 
     // create space for the rewards and disincentives
 
