@@ -13,7 +13,7 @@ We introduce a new form of artificial intelligence that is capable of carrying o
 We Claim
 
 1. The allocation of a bit in the Output Unit we call the Output Recall Bit which triggers a lookup of a specific consequent recalled Unit (an Input Unit) that is mapped to by a (state, action) pair and the allocation of a bit in the Input Unit to indicate whether the incoming Input Unit is a result of the recall operation, giving the AGI agent the ability to read from the Knowledge Bank.  
-2. The construction of breadth-first search instances from the Knowledge Bank and the solving for arriving at each of the Achieve State(s) A and Avoid State(s) A’.  
+2. The construction of graph analysis algorithm instances (we use breadth-first search in the provided source code) from the Knowledge Bank and the solving for starting at the current state C and arriving at each of the Achieve State(s) A and Avoid State(s) A’.  
 3. The re-targetting of an artificial neuron from a given layer when it fires an output to an artificial neuron’s input on the subsequent layer and the weight of the firing artificial neuron reaches a pre-set limit (we use 0 for this level in the provided reference source code).
 
 Specification
