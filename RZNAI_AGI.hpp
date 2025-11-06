@@ -52,16 +52,13 @@ typedef struct AGI_Sys_tag {
 	__int32  hidden_sz;
 	__int32  hidden_ct;
 
+	__int32 cycles_to_dec;
+	__int32 dec_amt;
+	__int32 inc_amt;
+
 	Dict_Entry** Knowledge_Bank;
 	__int32 kbsz;
 	__int32 kbpsz;
-
-	__int32* KB_2CNF_A;
-	__int32  kbatop;
-	__int32  kbacap;
-	__int32* KB_2CNF_B;
-	__int32  kbbtop;
-	__int32  kbbcap;
 
 	__int32* rewards;
 	__int32  rwtop;
