@@ -8,6 +8,28 @@
 
 using namespace std;
 
+void simp_queue_enqueue(Simp_Queue* queue, Simp_Queue* parm) {
+
+    Simp_Queue* temp = queue->next;
+    queue->next = parm;
+    parm->next = temp;
+
+}
+
+Simp_Queue* simp_queue_dequeue(Simp_Queue* queue) {
+
+    Simp_Queue* mover = queue;
+    if (mover->next == 0)
+        return 0;
+    while (mover->next->next != 0)
+        mover = mover->next;
+
+    Simp_Queue* ret = mover->next;
+    mover->next = 0;
+
+    return ret;
+}
+
 __int32* simp_vector_create (__int32 init_sz) {
 
     __int32* ret = new __int32[init_sz];

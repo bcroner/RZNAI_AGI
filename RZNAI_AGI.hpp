@@ -4,6 +4,14 @@
 #define TRUE_2SAT 1
 #define FALSE_2SAT -1
 
+typedef struct Simp_Queue_tag {
+
+	__int32 data;
+
+	Simp_Queue_tag* next;
+
+} Simp_Queue ;
+
 typedef struct Dict_Entry_tag {
 
 	__int32 init_state;
@@ -62,24 +70,12 @@ typedef struct AGI_Sys_tag {
 	__int32  dvtop;
 	__int32  dvcap;
 
-	__int32 ** Stack;
-	__int32 Stack_top;
-	__int32 Stack_cap;
-	__int32 ** adj;
-	__int32 adj_top;
-	__int32 adj_cap;
-	__int32 ** adjInv;
-	__int32 adjInv_top;
-	__int32 adjInv_cap;
-	__int32* adj_sz;
-	__int32* adjInv_sz;
-	bool * visited;
-	bool * visitedInv;
-	__int32 * scc;
-	__int32 counter;
+	Simp_Queue* bfs_queue;
 
 } AGI_Sys;
 
+void simp_queue_enqueue(Simp_Queue * queue, Simp_Queue * parm);
+Simp_Queue* simp_queue_dequeue(Simp_Queue* queue);
 Dict_Entry** create_dict(__int64 prime_sz);
 void create_dict_entry(Dict_Entry ** d, __int64 prime_sz, __int32 is, __int32 oa, __int32 vs);
 void remove_dict_entry(Dict_Entry ** d, __int64 prime_sz, __int32 is, __int32 oa);
