@@ -13,7 +13,7 @@ We introduce a new form of artificial intelligence that is capable of carrying o
 We Claim
 
 1. The construction of graph analysis algorithm instances (we use breadth-first search in the provided source code) from the Knowledge Bank and the solving for starting at the current state C and arriving at each of the Achieve State(s) A and Avoid State(s) A’.  
-2. The increase of magnitude of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any motivational reward(s) received and the decrease of the magnitude of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any motivational disincentive(s) received.  
+2. The increase of magnitude by a pre-set amount of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any motivational reward(s) received and the decrease of the magnitude by a pre-set amount of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any de-motivational disincentive(s) received.  
 3. The re-targetting of an artificial neuron from a given layer when it fires an output to an artificial neuron’s input on the subsequent layer and the weight of the firing artificial neuron reaches a pre-set limit (we use 0 for this level in the provided reference source code).
 
 Specification
