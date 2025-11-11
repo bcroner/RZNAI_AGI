@@ -59,6 +59,7 @@ typedef struct AGI_Sys_tag {
 	Dict_Entry** Knowledge_Bank;
 	__int32 kbsz;
 	__int32 kbpsz;
+	__int32 kbsts;
 
 	__int32* rewards;
 	__int32  rwtop;
@@ -66,9 +67,6 @@ typedef struct AGI_Sys_tag {
 	__int32* dsnctvs;
 	__int32  dvtop;
 	__int32  dvcap;
-
-	Simp_Queue* bfs_queue;
-	__int32** parent;
 
 } AGI_Sys;
 
@@ -84,6 +82,7 @@ __int32 * simp_stack_create(__int32 * vtop);
 __int32 simp_stack_pop(__int32* s, __int32 *vtop, __int32 vcap);
 void simp_stack_push(__int32 ** s, __int32 *vop, __int32* vcap, __int32 data);
 AGI_Sys * instantiate();
+__int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix);
 void generateBFSs(AGI_Sys* stm);
 void perform_iann(AGI_Sys* stm);
 void cycle(AGI_Sys * stm);

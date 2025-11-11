@@ -189,6 +189,7 @@ AGI_Sys * instantiate() {
 
     ret->kbpsz = 7919;
     ret->kbsz = 0;
+    ret->kbsts = 0;
     ret->Knowledge_Bank = create_dict(ret->kbpsz);
 
     ret->rwcap = 16;
@@ -201,28 +202,76 @@ AGI_Sys * instantiate() {
     return ret;
 }
 
+__int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix) {
+
+    __int32* parent = new __int32[stm->kbsts];
+
+    Simp_Queue* bfs_queue = new Simp_Queue();
+
+    bool* visited = new bool [stm->kbsts];
+
+    for (__int32 i = 0; i < stm->kbsts; i++)
+        visited[i] = false;
+
+    visited[cur] = true;
+
+    Simp_Queue* c = new Simp_Queue();
+    c->data = cur;
+    simp_queue_enqueue (bfs_queue, c);
+
+    while (!bfs_queue->next != 0) {
+        Simp_Queue* cv = simp_queue_dequeue(bfs_queue);
+
+        Dict_Entry* pos = stm->Knowledge_Bank[cv->data % stm->kbpsz]->next;
+        while (pos != 0 && pos->init_state != cv->data)
+            pos = pos->next;
+
+        if (pos == 0)
+            continue;
+
+        while ( pos != 0 && pos->init_state == cv->data) {
+
+            if (!visited[pos->vect_state]) {
+                parent[pos->vect_state] = pos->init_state;
+                visited[pos->vect_state] = true;
+                Simp_Queue* v = new Simp_Queue();
+                v->data = pos->vect_state;
+                simp_queue_enqueue(bfs_queue, v);
+            }
+
+            pos = pos->next;
+        }
+    }
+
+    // count path from stm->rewards[ix]/stm->dsnctvs[i] back to cur
+
+    __int32 count_path = 1;
+    for (__int32 tracker = rw ? stm->rewards[ix] : stm->dsnctvs[ix]; parent[tracker] != cur; tracker = parent[tracker])
+        count_path++;
+
+    __int32* ret = new __int32[count_path];
+    ret[count_path-1] = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
+    __int32 tracker = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
+    for (__int32 i = 0; i < count_path; i++) {
+        parent[count_path - 1 - i] = parent[tracker];
+        tracker = parent[tracker];
+    }
+
+    return ret;
+}
+
 void generateBFSs(AGI_Sys* stm) {
 
     // create space for the rewards and disincentives
 
-    simp_vector_append(&(stm->KB_2CNF_A), &(stm->kbatop), &(stm->kbacap), 0);
-    simp_vector_append(&(stm->KB_2CNF_A), &(stm->kbatop), &(stm->kbacap), 0);
-    simp_vector_append(&(stm->KB_2CNF_B), &(stm->kbatop), &(stm->kbacap), 0);
-    simp_vector_append(&(stm->KB_2CNF_B), &(stm->kbbtop), &(stm->kbbcap), 0);
+    __int32** rwpaths = new __int32* [stm->rwtop + 1];
+    __int32** dvpaths = new __int32* [stm->dvtop + 1];
 
-    for (__int32 i = 0; i < stm->kbpsz; i++) {
-
-        Dict_Entry* d = stm->Knowledge_Bank[i];
-
-    }
-
-    for (__int32 i = 0; i <= stm->rwtop; i++) {
-
-    }
-
-    for (__int32 i = 0; i <= stm->dvtop; i++) {
-
-    }
+    for (__int32 i = 0; i < stm->rwtop + 1; i++)
+        rwpaths [i] = executeBFS(stm, stm->Current_Input, true, i);
+       
+    for (__int32 i = 0; i < stm->dvtop + 1; i++)
+        dvpaths [i] = executeBFS(stm, stm->Current_Input, false, i);
 
 }
 
