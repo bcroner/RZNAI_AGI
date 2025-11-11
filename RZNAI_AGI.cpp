@@ -253,8 +253,8 @@ __int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix) {
     ret[count_path-1] = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
     __int32 tracker = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
     for (__int32 i = 0; i < count_path; i++) {
-        parent[count_path - 1 - i] = parent[tracker];
         tracker = parent[tracker];
+        parent[count_path - 1 - i] = tracker;
     }
 
     return ret;
