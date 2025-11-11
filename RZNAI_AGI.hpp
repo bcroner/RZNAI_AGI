@@ -68,7 +68,7 @@ typedef struct AGI_Sys_tag {
 	__int32  dvcap;
 
 	Simp_Queue* bfs_queue;
-	__int32*** parent;
+	__int32** parent;
 
 } AGI_Sys;
 
