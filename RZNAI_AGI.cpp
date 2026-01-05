@@ -206,6 +206,9 @@ __int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix) {
 
     __int32* parent = new __int32[stm->kbsts];
 
+    for (__int32 i = 0; i < stm->kbsts; i++)
+        parent[i] = 0;
+
     Simp_Queue* bfs_queue = new Simp_Queue();
 
     bool* visited = new bool [stm->kbsts];
@@ -325,7 +328,7 @@ void cycle(AGI_Sys * stm) {
 
     // feed into IANN and fetch output bit sequence
 
-    // construct 2SAT instance if read from recall input bit is set to 0 and output recall bit is set to 1
+    // construct BFS instance if read from recall input bit is set to 0 and output recall bit is set to 1
 
         // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
         // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
@@ -338,6 +341,9 @@ void cycle(AGI_Sys * stm) {
     // else read from sensory if output recall bit is set to 0
 
     // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
+
+    // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
+        // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)
 
 }
 
