@@ -150,9 +150,12 @@ AGI_Sys * instantiate() {
 
     ret->in_sz = 16;
     ret->out_sz = 4;
+    ret->sensory_bits = 1;
     ret->In_Q_ct = 7;
     ret->hidden_sz = ret->in_sz * ret->In_Q_ct;
     ret->hidden_ct = 16;
+
+    ret->output_weights = new __int32[ret->hidden_sz];
 
     ret->input_weights = new __int32* [ret->hidden_sz];
     ret->input_targets = new __int32* [ret->hidden_sz];
@@ -192,6 +195,17 @@ AGI_Sys * instantiate() {
     ret->kbsts = 0;
     ret->Knowledge_Bank = create_dict(ret->kbpsz);
 
+    for (__int32 i = 0; i < ret->kbpsz; i++) {
+        ret->Knowledge_Bank[i] = new Dict_Entry();
+        ret->Knowledge_Bank[i]->next = 0;
+        ret->Knowledge_Bank[i]->action_out = 0;
+        ret->Knowledge_Bank[i]->init_state = 0;
+        ret->Knowledge_Bank[i]->vect_state = 0;
+    }
+
+    ret->kb_rw_path = 0;
+    ret->kb_dv_path = 0;
+
     ret->rwcap = 16;
     ret->rwtop = -1;
     ret->rewards = simp_vector_create(ret->rwcap);
@@ -200,6 +214,49 @@ AGI_Sys * instantiate() {
     ret->dsnctvs = simp_vector_create(ret->dvcap);
 
     return ret;
+}
+
+void destroy_agi(AGI_Sys* stm) {
+
+    delete[] stm->output_weights;
+
+    for (__int32 i = 0; i < stm->hidden_sz; i++) {
+        delete[] stm->input_weights[i];
+        delete[] stm->input_targets[i];
+    }
+    delete[] stm->input_weights;
+    delete[] stm->input_targets;
+
+    
+    for (__int32 count = 0; count < stm->hidden_ct; count++) {
+      
+        for (__int32 i = 0; i < stm->hidden_sz; i++) {
+            delete[] stm->hidden[count]->weights[i];
+            delete[] stm->hidden[count]->targets[i];
+        }
+        delete[] stm->hidden[count]->weights;
+        delete[] stm->hidden[count]->targets;
+        delete[] stm->hidden[count];
+        delete[] stm->hidden[count]->firings;
+        delete[] stm->hidden[count]->weights;
+        delete[] stm->hidden[count]->targets;
+        delete[] stm->hidden[count];
+    }
+
+    delete[] stm->hidden;
+
+    for (__int32 i = 0; i < stm->kbpsz; i++)
+        delete[] stm->Knowledge_Bank[i];
+    delete[] stm->Knowledge_Bank;
+
+    if (stm->kb_rw_path != 0)
+        delete[] stm->kb_rw_path;
+    if (stm->kb_dv_path != 0)
+        delete[] stm->kb_dv_path;
+
+    delete[] stm->rewards;
+    delete[] stm->dsnctvs;
+
 }
 
 __int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix) {
@@ -276,9 +333,51 @@ void generateBFSs(AGI_Sys* stm) {
     for (__int32 i = 0; i < stm->dvtop + 1; i++)
         dvpaths [i] = executeBFS(stm, stm->Current_Input, false, i);
 
+    __int32 rw_dist = 2000000000;
+
+    for (__int32 i = 0; i < stm->rwtop + 1; i++) {
+        __int32 cur_dist = 0;
+        __int32 ix = 0;
+        while (rwpaths[i][ix] != stm->rewards[i]) {
+            ix++;
+            cur_dist++;
+        }
+        if (cur_dist < rw_dist) {
+            rw_dist = cur_dist;
+            if (stm->kb_rw_path != 0)
+                delete[] stm->kb_rw_path;
+            stm->kb_rw_path = new __int32[cur_dist + 1];
+            for (__int32 j = 0; j < cur_dist; j++)
+                stm->kb_rw_path[j] = rwpaths[i][j];
+            stm->kb_rw_path[cur_dist] = -1;
+        }
+
+    }
+
+    __int32 dv_dist = 2000000000;
+
+    for (__int32 i = 0; i < stm->dvtop + 1; i++) {
+        __int32 cur_dist = 0;
+        __int32 ix = 0;
+        while (dvpaths[i][ix] != stm->dsnctvs[i]) {
+            ix++;
+            cur_dist++;
+        }
+        if (cur_dist < dv_dist) {
+            dv_dist = cur_dist;
+            if (stm->kb_dv_path != 0)
+                delete[] stm->kb_dv_path;
+            stm->kb_dv_path = new __int32[cur_dist + 1];
+            for (__int32 j = 0; j < cur_dist; j++)
+                stm->kb_dv_path[j] = dvpaths[i][j];
+            stm->kb_dv_path[cur_dist] = -1;
+        }
+
+    }
+
 }
 
-void perform_iann(AGI_Sys* stm) {
+__int32 perform_iann(AGI_Sys* stm) {
 
     bool* input_b = new bool[stm->in_sz * stm->In_Q_ct];
 
@@ -316,36 +415,150 @@ void perform_iann(AGI_Sys* stm) {
                     stm->hidden[i]->firings[j] = true;
             }
         }
-
     }
+
+    bool* output_b = new bool[stm->out_sz];
+
+    for (__int32 i = 0; i < stm->out_sz; i++)
+        output_b[i] = false;
+
+    for (__int32 i = 0; i < stm->out_sz; i++) {
+
+        __int32 sum = 0;
+
+        for (__int32 j = 0; j < stm->hidden_sz; j++)
+            if (stm->hidden[stm->hidden_ct - 1]->firings[i])
+                sum += stm->hidden[stm->hidden_ct - 1]->weights[0][i];
+        if (sum >= 0)
+            output_b[i] = true;
+    }
+
+    __int32 ret_output = 0;
+
+    for (__int32 i = 0; i < stm->out_sz; i++)
+        ret_output |= 0x1 << i;
+
+    return ret_output;
+}
+
+bool terminate_program(__int32 cycles) {
+
+    return cycles >= 2000000000;    // 2 billion as an example of how long to run the program
+}
+
+__int32 read_sensory(__int32 sensor) {
+
+    switch (sensor) {
+    case 0: return 0; // return actual reading from sensor 0
+    case 1: return 1; // return actual reading from sensor 1
+    }
+}
+
+__int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
+
+    __int32 i = 0;
+    while (stm->kb_rw_path[i + 1] != -1 && stm->kb_rw_path[i] != previous_input_state)
+        i++;
+    if (stm->kb_rw_path[i + 1] == -1)
+        return 0;
+    __int32 kb_line = previous_input_state % stm->kbpsz;
+    Dict_Entry * cur_entry = stm->Knowledge_Bank[kb_line]->next;
+    while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
+        cur_entry = cur_entry->next;
+    if (cur_entry == 0)
+        return 0;
+    while (cur_entry != 0 && cur_entry->init_state == previous_input_state && cur_entry->action_out != previous_output_action)
+        cur_entry = cur_entry->next;
+    if (cur_entry == 0)
+        return 0;
+    return cur_entry->vect_state;
+    
+}
+__int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
+
+    generateBFSs(stm);
+
+    if (stm->kb_rw_path == 0 || stm->kb_rw_path[0] == -1)
+        return 0;
+    
+    return read_from_recall_next(stm, previous_input_state, previous_output_action);
 }
 
 void cycle(AGI_Sys * stm) {
 
+    __int32 cycle = 0;
+    __int32 sensor = 0;
+    __int32 previous_input_state = 0;
+    __int32 previous_output_action = 0;
+
+    bool out_read_from_recall = false;
+    bool in_read_from_recall = false;
+    bool read_from_recall_input = false;
+
+    __int32 sensor_mask = 0;
+    
+    for (__int32 i = 0; i < stm->sensory_bits; i++) {
+        sensor_mask = sensor_mask << 1;
+        sensor_mask |= 0x1;
+    }
+
     // while not terminate program
+
+    while (!terminate_program(cycle)) {
+
+        for (__int32 i = stm->In_Q_ct - 1; i >= 1; i--)
+            stm->Input_Queue[i] = stm->Input_Queue[i - 1];
+
+        out_read_from_recall = false;
 
         // read input
 
-        // update Knowledge Bank with (previous input state, output action) -> (newly read input)
+        __int32 input = 0;
+
+        if (!in_read_from_recall)
+            input = read_sensory(sensor);
+        else if (!read_from_recall_input)
+            input = read_from_recall_next(stm, previous_input_state, previous_output_action);
+        else
+            input = read_from_recall_new(stm, previous_input_state, previous_output_action);
 
         // feed into IANN and fetch output bit sequence
 
-        // construct BFS instance if read from recall input bit is set to 0 and output recall bit is set to 1
+        __int32 output = perform_iann(stm);
 
-            // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
-            // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
+        // update Knowledge Bank with (previous input state, output action) -> (newly read input)
 
-        // else if read from recall input bit is set to 1 and output recall bit is set to 1
+        bool entry_exists = false;
+        __int32 kb_line = previous_input_state % stm->kbpsz;
+        Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
+        while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
+            cur_entry = cur_entry->next;
+        if (cur_entry == 0)
+            entry_exists = false;
+        while (cur_entry != 0 && cur_entry->init_state == previous_input_state && cur_entry->action_out != previous_output_action)
+            cur_entry = cur_entry->next;
+        if (cur_entry == 0)
+            entry_exists = false;
+        else
+            entry_exists = true;
 
-            // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
-            // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
+        if (entry_exists)
+            remove_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, previous_output_action);
 
-        // else read from sensory if output recall bit is set to 0
+        create_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, input, output);
+
+        out_read_from_recall = output & 0x1;
+        sensor = (output >> 1) & sensor_mask;
 
         // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
 
         // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
             // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)
+
+        cycle++;
+        previous_input_state = input;
+        previous_output_action = output;
+    }
 
 }
 
