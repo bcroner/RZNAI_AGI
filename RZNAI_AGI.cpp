@@ -322,28 +322,30 @@ void perform_iann(AGI_Sys* stm) {
 
 void cycle(AGI_Sys * stm) {
 
-    // read input
+    // while not terminate program
 
-    // update Knowledge Bank with (previous input state, output action) -> (newly read input)
+        // read input
 
-    // feed into IANN and fetch output bit sequence
+        // update Knowledge Bank with (previous input state, output action) -> (newly read input)
 
-    // construct BFS instance if read from recall input bit is set to 0 and output recall bit is set to 1
+        // feed into IANN and fetch output bit sequence
 
-        // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
-        // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
+        // construct BFS instance if read from recall input bit is set to 0 and output recall bit is set to 1
 
-    // else if read from recall input bit is set to 1 and output recall bit is set to 1
+            // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
+            // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
 
-        // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
-        // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
+        // else if read from recall input bit is set to 1 and output recall bit is set to 1
 
-    // else read from sensory if output recall bit is set to 0
+            // if ( input state, output action ) exists in Knowledge Bank, fetch input state vectored to it
+            // else if ( input state, output action ) does not exist in Knowledge Bank, return null (0) input state
 
-    // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
+        // else read from sensory if output recall bit is set to 0
 
-    // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
-        // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)
+        // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
+
+        // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
+            // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)
 
 }
 
@@ -354,14 +356,3 @@ int main()
 }
 
 #endif
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
