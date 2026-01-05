@@ -4,7 +4,7 @@ System and Method for an AI Agent with Reasoning Capabilities
 
 Background of the Invention
 
-**\[0001\]** 
+**\[0001\]** The term Artificial Intelligence was coined by computer scientist John McCarthy in the 1950s \[1\]. Artificial intelligence research began at Dartmouth College in 1956 \[2\]. Expert systems are implementations that use logical rules developed by experts within a specialized domain, and these were actively being researched in the 1980s \[3\] \[4\] \[5\]. Ben Goertzel developed the term artificial general intelligence in 2008 \[5\]. The 2020s saw an AI boom with the discovery of the technology of Large Language Models (LLMs) \[6\] \[7\] \[8\] \[9\].
 
 Abstract
 
@@ -12,10 +12,10 @@ We introduce a new form of artificial intelligence that is capable of carrying o
 
 We Claim
 
-1. The allocation of an indicator (we use a bit in the provided source code) in the Output Unit we call the Output Recall Indicator which triggers a lookup of a specific consequent recalled Unit (an Input Unit) that is mapped to by a (state, action) pair and the allocation of an indicator (we use a bit in the provided source code) in the Input Unit to indicate whether the incoming Input Unit is a result of the recall operation, giving the AGI agent the ability to read from the Knowledge Bank.  
-2. The construction of graph analysis algorithm instances (we use breadth-first search in the provided source code) from the Knowledge Bank and the solving for starting at the current state C and arriving at each of the Achieve State(s) A and Avoid State(s) A’.  
-3. The increase of magnitude by a preset amount of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any motivational reward(s) received and the decrease of the magnitude by a preset amount of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any motivational disincentive(s) received.  
-4. The re-targetting of an artificial neuron from a given layer when it fires an output to an artificial neuron’s input on the subsequent layer and the weight of the firing artificial neuron reaches a preset limit (we use 0 for this level in the provided reference source code).
+1. The construction of graph analysis algorithm instances (we use breadth-first search in the provided source code) from the Knowledge Bank and the solving for starting at the current state C and arriving at each of the Achieve State(s) A and Avoid State(s) A’.  
+2. The increase of magnitude by a preset amount of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any motivational reward(s) received and the decrease of the magnitude by a preset amount of the weight of a connection (synapse) between an input signal or an artificial neuron from one layer to the next upon any motivational disincentive(s) received.  
+3. The re-targetting of an artificial neuron from a given layer when it fires an output to an artificial neuron’s input on the subsequent layer and the weight of the firing artificial neuron reaches a preset limit (we use 0 for this level in the provided reference source code).  
+4. The retrieval of an non-hashed unit of a former input from the knowledge bank upon the triggering of a recall operation by the setting of the recall bit in the output unit.
 
 Specification
 
@@ -45,3 +45,12 @@ Locations X, Y, and Z contain the inputs reached when Action Sequences 0, 1, and
 
 References
 
+1. Woo, Elaine (October 28, 2011). ["John McCarthy dies at 84; the father of artificial intelligence"](http://www.latimes.com/news/obituaries/la-me-john-mccarthy-20111027,0,7137805.story). [Los Angeles Times](https://en.wikipedia.org/wiki/Los_Angeles_Times).  
+2. Kaplan A, Haenlein M (2018), "Siri, Siri in my Hand, who's the Fairest in the Land? On the Interpretations, Illustrations and Implications of Artificial Intelligence", Business Horizons, 62: 15–25, [doi](https://en.wikipedia.org/wiki/Doi_\(identifier\)):[10.1016/j.bushor.2018.08.004](https://doi.org/10.1016%2Fj.bushor.2018.08.004), [S2CID](https://en.wikipedia.org/wiki/S2CID_\(identifier\)) [158433736](https://api.semanticscholar.org/CorpusID:158433736)  
+3. [Crevier D](https://en.wikipedia.org/wiki/Daniel_Crevier) (1993). AI: The Tumultuous Search for Artificial Intelligence. New York, NY: BasicBooks. [ISBN](https://en.wikipedia.org/wiki/ISBN_\(identifier\)) [0-465-02997-3](https://en.wikipedia.org/wiki/Special:BookSources/0-465-02997-3).  
+4. [Newquist HP](https://en.wikipedia.org/wiki/HP_Newquist) (1994), The Brain Makers: Genius, Ego, And Greed in the Quest For Machines That Think, New York: Macmillan/SAMS, [ISBN](https://en.wikipedia.org/wiki/ISBN_\(identifier\)) [978-0-9885937-1-8](https://en.wikipedia.org/wiki/Special:BookSources/978-0-9885937-1-8), [OCLC](https://en.wikipedia.org/wiki/OCLC_\(identifier\)) [313139906](https://search.worldcat.org/oclc/313139906)  
+5. [Russell SJ](https://en.wikipedia.org/wiki/Stuart_J._Russell), [Norvig P](https://en.wikipedia.org/wiki/Peter_Norvig) (2021). [Artificial Intelligence: A Modern Approach](https://en.wikipedia.org/wiki/Artificial_Intelligence:_A_Modern_Approach) (4th ed.). Hoboken: Pearson. [ISBN](https://en.wikipedia.org/wiki/ISBN_\(identifier\)) [978-0-13-461099-3](https://en.wikipedia.org/wiki/Special:BookSources/978-0-13-461099-3). [LCCN](https://en.wikipedia.org/wiki/LCCN_\(identifier\)) [20190474](https://lccn.loc.gov/20190474)  
+6. Marr B (20 March 2023). ["Beyond The Hype: What You Really Need To Know About AI In 2023"](https://www.forbes.com/sites/bernardmarr/2023/03/20/beyond-the-hype-what-you-really-need-to-know-about-ai-in-2023/). Forbes. Retrieved 27 January 2024\.  
+7. Clark S (21 December 2023). ["The Era of AI: 2023's Landmark Year"](https://www.cmswire.com/digital-experience/the-era-of-ai-end-of-year-ai-recap/). CMSWire.com. Retrieved 28 January 2024\.  
+8. [Gates B](https://en.wikipedia.org/wiki/Bill_Gates) (21 December 2023). ["This year signaled the start of a new era"](https://www.linkedin.com/pulse/year-signaled-start-new-era-bill-gates-qbpfc). www.linkedin.com. Retrieved 28 January 2024\.  
+9. Lee A (23 January 2024). ["UT Designates 2024 'The Year of AI'"](https://news.utexas.edu/2024/01/23/ut-designates-2024-the-year-of-ai/). UT News. Retrieved 28 January 2024\.
