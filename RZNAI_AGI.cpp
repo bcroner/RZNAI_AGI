@@ -459,7 +459,7 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
     __int32 i = 0;
     while (stm->kb_rw_path[i + 1] != -1 && stm->kb_rw_path[i] != previous_input_state)
         i++;
-    if (stm->kb_rw_path[i + 1] == -1)
+    if (stm->kb_rw_path[i + 1] == -1 || stm->kb_rw_path[i] != previous_input_state)
         return 0;
     __int32 kb_line = previous_input_state % stm->kbpsz;
     Dict_Entry * cur_entry = stm->Knowledge_Bank[kb_line]->next;
