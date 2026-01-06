@@ -484,6 +484,16 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
     return read_from_recall_next(stm, previous_input_state, previous_output_action);
 }
 
+bool get_rw(__int32 cycle) {
+    // actually fetch reward bit
+    return cycle % 32767;
+}
+
+bool get_dv(__int32 cycle) {
+    // actually fetch disincentive bit
+    return cycle % 65537;
+}
+
 void cycle(AGI_Sys * stm) {
 
     __int32 cycle = 0;
@@ -551,6 +561,68 @@ void cycle(AGI_Sys * stm) {
         sensor = (output >> 1) & sensor_mask;
 
         // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
+
+        bool rw = get_rw(cycle);
+        bool dv = get_dv(cycle);
+
+        if (rw) {
+
+            bool found = false;
+            for (__int32 i = 0; i < stm->rwtop + 1; i++)
+                if (stm->rewards[i] != input)
+                    continue;
+                else
+                    found = true;
+               
+            if (!found)
+                simp_vector_append(&(stm->rewards), &(stm->rwtop), &(stm->rwcap), input);
+
+            found = false;
+
+            __int32 ix = 0;
+            for (ix = 0; ix < stm->dvtop + 1; ix++)
+                if (stm->dsnctvs[ix] != input)
+                    continue;
+                else
+                    found = true;
+
+            if (found) {
+                while (ix < stm->dvtop) {
+                    stm->dsnctvs[ix] = stm->dsnctvs[ix + 1];
+                    ix++;
+                }
+                stm->dvtop--;
+            }
+
+        }
+        if (dv) {
+            bool found = false;
+            for (__int32 i = 0; i < stm->dvtop + 1; i++)
+                if (stm->dsnctvs[i] != input)
+                    continue;
+                else
+                    found = true;
+
+            if (!found)
+                simp_vector_append(&(stm->dsnctvs), &(stm->dvtop), &(stm->dvcap), input);
+
+            found = false;
+
+            __int32 ix = 0;
+            for (ix = 0; ix < stm->rwtop + 1; ix++)
+                if (stm->rewards[ix] != input)
+                    continue;
+                else
+                    found = true;
+
+            if (found) {
+                while (ix < stm->rwtop) {
+                    stm->rewards[ix] = stm->rewards[ix + 1];
+                    ix++;
+                }
+                stm->rwtop--;
+            }
+        }
 
         // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
             // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)

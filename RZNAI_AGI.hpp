@@ -69,11 +69,11 @@ typedef struct AGI_Sys_tag {
 	__int32* kb_dv_path;
 
 	__int32* rewards;
-	__int32  rwtop;
-	__int32  rwcap;
+	__int32 rwtop;
+	__int32 rwcap;
 	__int32* dsnctvs;
-	__int32  dvtop;
-	__int32  dvcap;
+	__int32 dvtop;
+	__int32 dvcap;
 
 } AGI_Sys;
 
