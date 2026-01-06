@@ -153,7 +153,7 @@ AGI_Sys * instantiate() {
     ret->out_addr_sz = 2;
     ret->sensory_bits = 1;
     ret->In_Q_ct = 7;
-    ret->hidden_sz = ret->in_sz * ret->In_Q_ct;
+    ret->hidden_sz = ret->in_sz * ret->In_Q_ct * 2;
     ret->hidden_ct = 16;
 
     ret->output_weights = new __int32*[ret->hidden_sz];
