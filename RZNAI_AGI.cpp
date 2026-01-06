@@ -476,43 +476,90 @@ __int32 read_sensory(__int32 sensor) {
     return input;
 }
 
-__int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
-    if (stm->kb_rw_path == 0)
-        return 0;
-    __int32 ix = 0;
-    while (stm->kb_rw_path[ix] != -1 && stm->kb_rw_path[ix] != previous_input_state)
-        ix;
-    if (stm->kb_rw_path[ix] == -1 || stm->kb_rw_path[ix + 1] == -1)
-        return 0;
-    return (stm->kb_rw_path[ix + 1] << 1) & 0x1;
+__int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action, bool rw) {
+
+    if (rw) {
+        if (stm->kb_rw_path == 0)
+            return 0;
+        __int32 ix = 0;
+        while (stm->kb_rw_path[ix] != -1 && stm->kb_rw_path[ix] != previous_input_state)
+            ix;
+        if (stm->kb_rw_path[ix] == -1 || stm->kb_rw_path[ix + 1] == -1)
+            return 0;
+        __int32 ret_val = stm->kb_rw_path[ix + 1];
+        ret_val = (ret_val << 1) & 0x1; // indicates reading from rewards
+        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        return ret_val;
+    }
+    else {
+        if (stm->kb_dv_path == 0)
+            return 0;
+        __int32 ix = 0;
+        while (stm->kb_dv_path[ix] != -1 && stm->kb_dv_path[ix] != previous_input_state)
+            ix;
+        if (stm->kb_dv_path[ix] == -1 || stm->kb_dv_path[ix + 1] == -1)
+            return 0;
+        __int32 ret_val = stm->kb_rw_path[ix + 1];
+        ret_val = (ret_val << 1) & 0x0; // indicates reading from disincentives
+        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        return ret_val;
+    }
 }
-__int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
+__int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action, bool rw) {
 
     generateBFSs(stm);
 
-    if (stm->kb_rw_path == 0 || stm->kb_rw_path[0] == -1)
-        return 0;
-    
-    __int32 i = 0;
-    while (stm->kb_rw_path[i + 1] != -1 && stm->kb_rw_path[i] != previous_input_state)
-        i++;
-    if (stm->kb_rw_path[i + 1] == -1 || stm->kb_rw_path[i] != previous_input_state)
-        return 0;
-    __int32 kb_line = previous_input_state % stm->kbpsz;
-    Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
-    while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
-        cur_entry = cur_entry->next;
-    if (cur_entry == 0)
-        return 0;
-    while (cur_entry != 0 && cur_entry->init_state == previous_input_state && cur_entry->action_out != previous_output_action)
-        cur_entry = cur_entry->next;
-    if (cur_entry == 0)
-        return 0;
+    if (rw) {
 
-    // set read input from recall
-    __int32 ret_input = (cur_entry->vect_state << 1) & 0x1;
+        if (stm->kb_rw_path == 0 || stm->kb_rw_path[0] == -1)
+            return 0;
 
-    return ret_input;
+        __int32 i = 0;
+        while (stm->kb_rw_path[i + 1] != -1 && stm->kb_rw_path[i] != previous_input_state)
+            i++;
+        if (stm->kb_rw_path[i + 1] == -1 || stm->kb_rw_path[i] != previous_input_state)
+            return 0;
+        __int32 kb_line = previous_input_state % stm->kbpsz;
+        Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
+        while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
+            cur_entry = cur_entry->next;
+        if (cur_entry == 0)
+            return 0;
+        while (cur_entry != 0 && cur_entry->init_state == previous_input_state && cur_entry->action_out != previous_output_action)
+            cur_entry = cur_entry->next;
+        if (cur_entry == 0)
+            return 0;
+
+        __int32 ret_val = cur_entry->vect_state;
+        ret_val = (ret_val << 1) & 0x1; // indicates reading from rewards
+        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        return ret_val;
+    }
+    else {
+        if (stm->kb_dv_path == 0 || stm->kb_dv_path[0] == -1)
+            return 0;
+
+        __int32 i = 0;
+        while (stm->kb_dv_path[i + 1] != -1 && stm->kb_dv_path[i] != previous_input_state)
+            i++;
+        if (stm->kb_dv_path[i + 1] == -1 || stm->kb_dv_path[i] != previous_input_state)
+            return 0;
+        __int32 kb_line = previous_input_state % stm->kbpsz;
+        Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
+        while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
+            cur_entry = cur_entry->next;
+        if (cur_entry == 0)
+            return 0;
+        while (cur_entry != 0 && cur_entry->init_state == previous_input_state && cur_entry->action_out != previous_output_action)
+            cur_entry = cur_entry->next;
+        if (cur_entry == 0)
+            return 0;
+
+        __int32 ret_val = cur_entry->vect_state;
+        ret_val = (ret_val << 1) & 0x0; // indicates reading from disincentives
+        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        return ret_val;
+    }
 }
 
 bool get_rw(__int32 cycle) {
@@ -535,6 +582,8 @@ void cycle(AGI_Sys * stm) {
     bool out_read_from_recall = false;
     bool in_read_from_recall = false;
     bool read_from_recall_input = false;
+    bool prev_recall_rwdv = true; // true bit indicates rewards, false bit indicates disincentives
+    bool recall_rwdv = true;
 
     __int32 sensor_mask = 0;
     
@@ -558,10 +607,10 @@ void cycle(AGI_Sys * stm) {
 
         if (!in_read_from_recall)
             input = read_sensory(sensor);
-        else if (!read_from_recall_input)
-            input = read_from_recall_next(stm, previous_input_state, previous_output_action);
-        else
+        else if (read_from_recall_input || (prev_recall_rwdv != recall_rwdv))
             input = read_from_recall_new(stm, previous_input_state, previous_output_action);
+        else
+            input = read_from_recall_next(stm, previous_input_state, previous_output_action); 
 
         stm->Current_Input = input;
         stm->Input_Queue[0] = stm->Current_Input;
@@ -593,6 +642,8 @@ void cycle(AGI_Sys * stm) {
 
         out_read_from_recall = output & 0x1;
         sensor = (output >> 1) & sensor_mask;
+        prev_recall_rwdv = recall_rwdv;
+        recall_rwdv = (output >> 1) & 0x1; // least significant sensory id doubles as recall identity selector, rw or dv
 
         // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
 
