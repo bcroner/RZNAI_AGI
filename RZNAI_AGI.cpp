@@ -477,14 +477,29 @@ __int32 read_sensory(__int32 sensor) {
 }
 
 __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
+    if (stm->kb_rw_path == 0)
+        return 0;
+    __int32 ix = 0;
+    while (stm->kb_rw_path[ix] != -1 && stm->kb_rw_path[ix] != previous_input_state)
+        ix;
+    if (stm->kb_rw_path[ix] == -1 || stm->kb_rw_path[ix + 1] == -1)
+        return 0;
+    return stm->kb_rw_path[ix + 1];
+}
+__int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
 
+    generateBFSs(stm);
+
+    if (stm->kb_rw_path == 0 || stm->kb_rw_path[0] == -1)
+        return 0;
+    
     __int32 i = 0;
     while (stm->kb_rw_path[i + 1] != -1 && stm->kb_rw_path[i] != previous_input_state)
         i++;
     if (stm->kb_rw_path[i + 1] == -1 || stm->kb_rw_path[i] != previous_input_state)
         return 0;
     __int32 kb_line = previous_input_state % stm->kbpsz;
-    Dict_Entry * cur_entry = stm->Knowledge_Bank[kb_line]->next;
+    Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
     while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
         cur_entry = cur_entry->next;
     if (cur_entry == 0)
@@ -496,18 +511,8 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
 
     // set read input from recall
     __int32 ret_input = (cur_entry->vect_state << 1) & 0x1;
-    
+
     return ret_input;
-    
-}
-__int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
-
-    generateBFSs(stm);
-
-    if (stm->kb_rw_path == 0 || stm->kb_rw_path[0] == -1)
-        return 0;
-    
-    return read_from_recall_next(stm, previous_input_state, previous_output_action);
 }
 
 bool get_rw(__int32 cycle) {
