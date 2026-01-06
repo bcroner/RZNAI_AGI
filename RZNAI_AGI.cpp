@@ -559,6 +559,7 @@ void cycle(AGI_Sys * stm) {
             input = read_from_recall_new(stm, previous_input_state, previous_output_action);
 
         stm->Current_Input = input >> 1;
+        stm->Input_Queue[0] = stm->Current_Input;
 
         // feed into IANN and fetch output bit sequence
 
