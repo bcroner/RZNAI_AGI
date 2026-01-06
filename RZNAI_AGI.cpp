@@ -594,6 +594,15 @@ void cycle(AGI_Sys * stm) {
                 stm->dvtop--;
             }
 
+            for (__int32 i = 0; i < stm->hidden_ct; i++)
+                for (__int32 j = 0; j < stm->hidden_sz; j++)
+                    if (stm->hidden[i]->firings[j])
+                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+                            stm->hidden[i]->weights[j][k] += stm->inc_amt;
+
+            for (__int32 i = 0; i < stm->hidden_sz; i++)
+                stm->output_weights[i] += stm->inc_amt;
+
         }
         if (dv) {
             bool found = false;
@@ -622,6 +631,14 @@ void cycle(AGI_Sys * stm) {
                 }
                 stm->rwtop--;
             }
+            for (__int32 i = 0; i < stm->hidden_ct; i++)
+                for (__int32 j = 0; j < stm->hidden_sz; j++)
+                    if (stm->hidden[i]->firings[j])
+                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+                            stm->hidden[i]->weights[j][k] -= stm->dec_amt;
+
+            for (__int32 i = 0; i < stm->hidden_sz; i++)
+                stm->output_weights[i] -= stm->dec_amt;
         }
 
         // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
