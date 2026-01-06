@@ -47,7 +47,8 @@ typedef struct AGI_Sys_tag {
 	__int32 in_sz;
 	__int32 out_sz;
 
-	__int32* output_weights;
+	__int32** output_weights;
+	__int32** output_targets;
 
 	__int32** input_weights;
 	__int32** input_targets;
