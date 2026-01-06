@@ -581,11 +581,15 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
 
 bool get_rw(__int32 cycle) {
     // actually fetch reward bit
+
+    // simulation:
     return cycle % 32767;
 }
 
 bool get_dv(__int32 cycle) {
     // actually fetch disincentive bit
+
+    // simulation:
     return cycle % 65537;
 }
 
