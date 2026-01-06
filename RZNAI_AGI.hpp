@@ -36,7 +36,6 @@ typedef struct IntNNL_tag {
 typedef struct AGI_Sys_tag {
 
 	__int32 Current_Input;
-	__int32 Output_Unit;
 
 	__int32 sensory_bits;
 

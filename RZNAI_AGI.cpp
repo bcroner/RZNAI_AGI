@@ -166,14 +166,14 @@ AGI_Sys * instantiate() {
         }
     }
 
-    ret->input_weights = new __int32* [ret->hidden_sz];
-    ret->input_targets = new __int32* [ret->hidden_sz];
-    for (__int32 i = 0; i < ret->hidden_sz; i++) {
+    ret->input_weights = new __int32* [ret->in_sz * ret->In_Q_ct];
+    ret->input_targets = new __int32* [ret->in_sz * ret->In_Q_ct];
+    for (__int32 i = 0; i < ret->in_sz * ret->In_Q_ct; i++) {
         ret->input_weights[i] = new __int32[ret->hidden_sz >> 1];
         ret->input_targets[i] = new __int32[ret->hidden_sz >> 1];
         for (__int32 j = 0; j < ret->hidden_sz >> 1; j++) {
             ret->input_weights[i][j] = ( j % 2 == 0 ? -16384 : 16384 );
-            ret->input_targets[i][j] = (j << 1) % ret->hidden_sz;
+            ret->input_targets[i][j] = j % ret->hidden_sz;
         }
     }
 
@@ -187,7 +187,7 @@ AGI_Sys * instantiate() {
             ret->hidden[count]->targets[i] = new __int32[ret->hidden_sz >> 1];
             for (__int32 j = 0; j < ret->hidden_sz >> 1; j++) {
                 ret->hidden[count]->weights[i][j] = j % 2 == 0 ? -16384 : 16384;
-                ret->hidden[count]->targets[i][j] = (j << 1) % ret->hidden_sz;
+                ret->hidden[count]->targets[i][j] = j % ret->hidden_sz;
             }
         }
         ret->hidden[count]->firings = new bool[ret->hidden_sz];
@@ -450,7 +450,7 @@ __int32 perform_iann(AGI_Sys* stm) {
     __int32 ret_output = 0;
 
     for (__int32 i = 0; i < stm->out_sz; i++)
-        ret_output |= 0x1 << i;
+        ret_output |= (0x1 << i);
 
     return ret_output;
 }
@@ -462,10 +462,18 @@ bool terminate_program(__int32 cycles) {
 
 __int32 read_sensory(__int32 sensor) {
 
+    __int32 input;
+
     switch (sensor) {
-    case 0: return 0; // return actual reading from sensor 0
-    case 1: return 1; // return actual reading from sensor 1
+        case 0: input = 0; // get actual reading from sensor 0
+        case 1: input = 1; // get actual reading from sensor 1
     }
+
+    // set read from sensory
+    input = input << 1;
+    input = input & 0x0;
+
+    return input;
 }
 
 __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
@@ -485,7 +493,11 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
         cur_entry = cur_entry->next;
     if (cur_entry == 0)
         return 0;
-    return cur_entry->vect_state;
+
+    // set read input from recall
+    __int32 ret_input = (cur_entry->vect_state << 1) & 0x1;
+    
+    return ret_input;
     
 }
 __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
@@ -545,6 +557,8 @@ void cycle(AGI_Sys * stm) {
             input = read_from_recall_next(stm, previous_input_state, previous_output_action);
         else
             input = read_from_recall_new(stm, previous_input_state, previous_output_action);
+
+        stm->Current_Input = input >> 1;
 
         // feed into IANN and fetch output bit sequence
 
@@ -622,57 +636,156 @@ void cycle(AGI_Sys * stm) {
                 }
             }
 
+            __int32* sums = new __int32[stm->hidden_sz];
+            for (__int32 i = 0; i < stm->hidden_sz; i++)
+                sums[i] = 0;
+            for (__int32 i = 0; i < stm->in_sz * stm->In_Q_ct; i++)
+                if (inputs[i])
+                    for (__int32 j = 0; j < stm->hidden_sz; j++)
+                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+                            if (stm->input_targets[i][k] == j && stm->hidden[0]->firings[j])
+                                stm->input_weights[i][k] += (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+
             for (__int32 i = 1; i < stm->hidden_ct; i++)
                 for (__int32 j = 0; j < stm->hidden_sz; j++)
                     if (stm->hidden[i]->firings[j])
                         for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
                             stm->hidden[i]->weights[j][k] += (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
 
+            __int32 temp_output = output;
+
             for (__int32 i = 0; i < stm->hidden_sz; i++)
-                stm->output_weights[i] += (i % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+                for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
+                    __int32 temp_output = output;
+                    for (__int32 k = 0; k < stm->out_sz; k++) {
+                        if (temp_output & 0x1)
+                            stm->output_weights[i][j] += (j % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+                        temp_output = temp_output >> 1;
+                    }
+                }
 
         }
         if (dv) {
+
             bool found = false;
             for (__int32 i = 0; i < stm->dvtop + 1; i++)
-                if (stm->dsnctvs[i] != input)
+                if (stm->rewards[i] != input)
                     continue;
                 else
                     found = true;
 
             if (!found)
-                simp_vector_append(&(stm->dsnctvs), &(stm->dvtop), &(stm->dvcap), input);
+                simp_vector_append(&(stm->rewards), &(stm->dvtop), &(stm->dvcap), input);
 
             found = false;
 
             __int32 ix = 0;
-            for (ix = 0; ix < stm->rwtop + 1; ix++)
-                if (stm->rewards[ix] != input)
+            for (ix = 0; ix < stm->dvtop + 1; ix++)
+                if (stm->dsnctvs[ix] != input)
                     continue;
                 else
                     found = true;
 
             if (found) {
-                while (ix < stm->rwtop) {
-                    stm->rewards[ix] = stm->rewards[ix + 1];
+                while (ix < stm->dvtop) {
+                    stm->dsnctvs[ix] = stm->dsnctvs[ix + 1];
                     ix++;
                 }
-                stm->rwtop--;
+                stm->dvtop--;
             }
-            for (__int32 i = 0; i < stm->hidden_ct; i++)
+
+            bool* inputs = new bool[stm->in_sz * stm->In_Q_ct];
+
+            for (__int32 i = 0; i < stm->In_Q_ct; i++)
+                for (__int32 j = 0; j < stm->in_sz; j++)
+                    inputs[i * stm->in_sz + j] = false;
+
+            for (__int32 i = 0; i < stm->In_Q_ct; i++) {
+                __int32 temp_in = stm->Input_Queue[i];
+                for (__int32 j = 0; j < stm->in_sz; j++) {
+                    inputs[i * stm->in_sz + j] = temp_in & 1;
+                    temp_in = temp_in >> 1;
+                }
+            }
+
+            __int32* sums = new __int32[stm->hidden_sz];
+            for (__int32 i = 0; i < stm->hidden_sz; i++)
+                sums[i] = 0;
+            for (__int32 i = 0; i < stm->in_sz * stm->In_Q_ct; i++)
+                if (inputs[i])
+                    for (__int32 j = 0; j < stm->hidden_sz; j++)
+                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+                            if (stm->input_targets[i][k] == j && stm->hidden[0]->firings[j])
+                                stm->input_weights[i][k] -= (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+
+            for (__int32 i = 1; i < stm->hidden_ct; i++)
                 for (__int32 j = 0; j < stm->hidden_sz; j++)
                     if (stm->hidden[i]->firings[j])
                         for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                            stm->hidden[i]->weights[j][k] -= stm->dec_amt;
+                            stm->hidden[i]->weights[j][k] -= (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+
+            __int32 temp_output = output;
 
             for (__int32 i = 0; i < stm->hidden_sz; i++)
-                stm->output_weights[i] -= stm->dec_amt;
+                for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
+                    __int32 temp_output = output;
+                    for (__int32 k = 0; k < stm->out_sz; k++) {
+                        if (temp_output & 0x1)
+                            stm->output_weights[i][j] -= (j % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+                        temp_output = temp_output >> 1;
+                    }
+                }
+
+        }
+
+        // make sure to update rw and dv vectors if input matches any in these vectors and no rw/dv occurred
+
+        if (!rw && !dv) {
+            bool input_read_from_recall = input & 0x1;
+            __int32 temp_input = input >> 1;
+            if (!input_read_from_recall) {
+                for (__int32 i = 0 ; i < stm->rwtop + 1; i++)
+                    if (stm->rewards[i] == temp_input) {
+                        for (__int32 j = i; j < stm->rwtop; j++)
+                            stm->rewards[j] = stm->rewards[j + 1];
+                        stm->rwtop--;
+                    }
+
+                for (__int32 i = 0; i < stm->dvtop + 1; i++)
+                    if (stm->dsnctvs[i] == temp_input) {
+                        for (__int32 j = i; j < stm->dvtop; j++)
+                            stm->dsnctvs[j] = stm->dsnctvs[j + 1];
+                        stm->dvtop--;
+                    }
+            }
         }
 
         // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
             // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)
 
         if (cycle % stm->cycles_to_dec == 0) {
+
+            for (__int32 i = 0; i < stm->In_Q_ct; i++)
+                for (__int32 j = 0 ; j < stm->in_sz; j++)
+                    for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
+                        stm->input_weights[i * stm->in_sz + j][k] = stm->input_weights[i][j] >> 1;
+                        if (stm->input_weights[i * stm->in_sz + j][k] == 0) {
+                            bool* exists = new bool[stm->in_sz * stm->In_Q_ct];
+                            for (__int32 l = 0; l < stm->in_sz * stm->In_Q_ct; l++)
+                                exists[k] = false;
+                            for (__int32 l = 0; l < stm->In_Q_ct; l++)
+                                for (__int32 m = 0; m < stm->in_sz; m++)
+                                    if ((stm->Input_Queue[l] >> m ) & 0x1)
+                                        exists[l * stm->in_sz + m] = true;
+                            __int32 ix = stm->input_targets[i * stm->in_sz + j][k] + 1;
+                            while (!exists[ix % (stm->In_Q_ct * stm->in_sz)])
+                                ix++;
+                            stm->input_targets[i * stm->in_sz + j][k] = ix % (stm->in_sz * stm->In_Q_ct);
+                            stm->input_weights[i * stm->in_sz + j][k] = (ix % stm->in_sz * stm->In_Q_ct) % 2 == 0 ? -16384 : 16384;
+                            delete[] exists;
+                        }
+                    }
+
             for (__int32 i = 0; i < stm->hidden_ct; i++)
                 for (__int32 j = 0; j < stm->hidden_sz; j++)
                     for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
@@ -684,16 +797,31 @@ void cycle(AGI_Sys * stm) {
                             for (__int32 l = 0; l < stm->hidden_sz >> 1; l++)
                                 exists[stm->hidden[i]->targets[j][l]] = true;
                             __int32 ix = stm->hidden[i]->targets[j][k] + 1;
-                            while (!exists[ix % stm->hidden_sz >> 1])
+                            while (!exists[ix % (stm->hidden_sz >> 1]))
                                 ix++;
                             stm->hidden[i]->targets[j][k] = ix % stm->hidden_sz;
                             stm->hidden[i]->weights[j][k] = (ix % stm->hidden_sz) % 2 == 0 ? -16384 : 16384;
                             delete[] exists;
                         }
             }
-            for (__int32 i = 0; i < stm->out_sz; i++)
-                for (__int32 j = 0; j < stm->hidden_sz; j++)
-                    stm->hidden[j]->weights[0][i] = stm->hidden[j]->weights[0][i] >> 1;
+            for (__int32 i = 0; i < stm->hidden_sz; i++)
+                for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
+                    stm->output_weights[i][j] = stm->output_weights[i][j] >> 1;
+                    if (stm->output_weights[i][j] == 0) {
+                        bool* exists = new bool[stm->out_sz];
+                        for (__int32 k = 0; k < stm->out_sz; k++)
+                            exists[k] = false;
+                        for (__int32 k = 0; k < stm->out_sz >> 1; k++)
+                            if (stm->output_targets[i][k])
+                                exists[k] = true;
+                        __int32 ix = stm->output_targets[i][j] + 1;
+                        while (!exists[ix % stm->hidden_sz >> 1])
+                            ix++;
+                        stm->output_targets[i][j] = ix % stm->out_sz;
+                        stm->output_weights[i][j] = (ix % stm->out_sz) % 2 == 0 ? -16384 : 16384;
+                        delete[] exists;
+                    }
+                }
         }
 
         cycle++;
@@ -706,7 +834,8 @@ void cycle(AGI_Sys * stm) {
 //  Driver function to test above functions
 int main()
 {
-    return 0;
+    AGI_Sys* stm = instantiate();
+    cycle(stm);
 }
 
 #endif
