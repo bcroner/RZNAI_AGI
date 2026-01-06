@@ -342,10 +342,10 @@ void generateBFSs(AGI_Sys* stm) {
     __int32** dvpaths = new __int32* [stm->dvtop + 1];
 
     for (__int32 i = 0; i < stm->rwtop + 1; i++)
-        rwpaths [i] = executeBFS(stm, stm->Current_Input, true, i);
+        rwpaths [i] = executeBFS(stm, stm->Current_Input >> 1, true, i);
        
     for (__int32 i = 0; i < stm->dvtop + 1; i++)
-        dvpaths [i] = executeBFS(stm, stm->Current_Input, false, i);
+        dvpaths [i] = executeBFS(stm, stm->Current_Input >> 1, false, i);
 
     __int32 rw_dist = 2000000000;
 
@@ -558,7 +558,7 @@ void cycle(AGI_Sys * stm) {
         else
             input = read_from_recall_new(stm, previous_input_state, previous_output_action);
 
-        stm->Current_Input = input >> 1;
+        stm->Current_Input = input;
         stm->Input_Queue[0] = stm->Current_Input;
 
         // feed into IANN and fetch output bit sequence
@@ -584,7 +584,7 @@ void cycle(AGI_Sys * stm) {
         if (entry_exists)
             remove_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, previous_output_action);
 
-        create_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, input, output);
+        create_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, input >> 1, output);
 
         out_read_from_recall = output & 0x1;
         sensor = (output >> 1) & sensor_mask;
