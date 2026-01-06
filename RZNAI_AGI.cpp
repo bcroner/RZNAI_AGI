@@ -484,7 +484,7 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
         ix;
     if (stm->kb_rw_path[ix] == -1 || stm->kb_rw_path[ix + 1] == -1)
         return 0;
-    return stm->kb_rw_path[ix + 1];
+    return (stm->kb_rw_path[ix + 1] << 1) & 0x1;
 }
 __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32 previous_output_action) {
 
