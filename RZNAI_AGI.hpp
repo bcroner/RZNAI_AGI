@@ -45,6 +45,7 @@ typedef struct AGI_Sys_tag {
 
 	__int32 in_sz;
 	__int32 out_sz;
+	__int32 out_addr_sz;
 
 	__int32** output_weights;
 	__int32** output_targets;
@@ -94,9 +95,18 @@ __int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix);
 void generateBFSs(AGI_Sys* stm);
 __int32 perform_iann(AGI_Sys* stm);
 bool terminate_program(__int32 cycles);
+__int32 in_0();
+__int32 in_1();
 __int32 read_sensory(__int32 sensor);
-__int32 read_from_recall_next(AGI_Sys* stm, __int32 previous_input_state, __int32 previous_output_action);
-__int32 read_from_recall_new(AGI_Sys* stm, __int32 previous_input_state, __int32 previous_output_action);
+__int32 read_from_recall_next(AGI_Sys* stm, __int32 previous_input_state, __int32 previous_output_action, bool rw);
+__int32 read_from_recall_new(AGI_Sys* stm, __int32 previous_input_state, __int32 previous_output_action, bool rw);
+bool get_rw(__int32 cycle);
+bool get_dv(__int32 cycle);
+void out_0(__int32 parm);
+void out_1(__int32 parm);
+void out_2(__int32 parm);
+void out_3(__int32 parm);
+void handle_output(AGI_Sys *stm, __int32 output);
 void cycle(AGI_Sys * stm);
 
 #endif

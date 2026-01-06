@@ -150,6 +150,7 @@ AGI_Sys * instantiate() {
 
     ret->in_sz = 16;
     ret->out_sz = 4;
+    ret->out_addr_sz = 2;
     ret->sensory_bits = 1;
     ret->In_Q_ct = 7;
     ret->hidden_sz = ret->in_sz * ret->In_Q_ct;
@@ -460,13 +461,29 @@ bool terminate_program(__int32 cycles) {
     return cycles >= 2000000000;    // 2 billion as an example of how long to run the program
 }
 
+__int32 in_0() {
+
+    // actually read from sensor 0
+
+    // simulation:
+    return 0;
+}
+
+__int32 in_1() {
+
+    // actually read from sensor 1
+
+    // simulation:
+    return 1;
+}
+
 __int32 read_sensory(__int32 sensor) {
 
     __int32 input;
 
     switch (sensor) {
-        case 0: input = 0; // get actual reading from sensor 0
-        case 1: input = 1; // get actual reading from sensor 1
+        case 0: input = in_0(); // get actual reading from sensor 0
+        case 1: input = in_1(); // get actual reading from sensor 1
     }
 
     // set read from sensory
@@ -572,6 +589,49 @@ bool get_dv(__int32 cycle) {
     return cycle % 65537;
 }
 
+void out_0(__int32 parm) {
+
+    // send parm to servo 0, for example
+}
+
+void out_1(__int32 parm) {
+
+    // send parm to servo 1, for example
+}
+
+void out_2(__int32 parm) {
+
+    // send parm to servo 2, for example
+}
+
+void out_3(__int32 parm) {
+
+    // send parm to servo 3, for example
+}
+
+void handle_output(AGI_Sys* stm, __int32 output) {
+
+    __int32 output_addr_mask = 0;
+    for (__int32 i = 0; i < stm->out_addr_sz; i++)
+        output_addr_mask |= (0x1 << i);
+
+    __int32 temp_output = output >> 1;
+    __int32 out_addr = temp_output & output_addr_mask;
+    __int32 out_parm = temp_output >> stm->out_addr_sz;
+
+    // actually send the parameter out_parm to the output addressed by out_addr
+
+    // simulation:
+
+    switch (out_addr) {
+    case 0: out_0(out_parm);
+    case 1: out_1(out_parm);
+    case 2: out_2(out_parm);
+    case 3: out_3(out_parm);
+    };
+
+}
+
 void cycle(AGI_Sys * stm) {
 
     __int32 cycle = 0;
@@ -644,6 +704,9 @@ void cycle(AGI_Sys * stm) {
         sensor = (output >> 1) & sensor_mask;
         prev_recall_rwdv = recall_rwdv;
         recall_rwdv = (output >> 1) & 0x1; // least significant sensory id doubles as recall identity selector, rw or dv
+
+        if (!out_read_from_recall)
+            handle_output(stm, output);
 
         // fetch any reward or disincentive feedback and take appropriate action on IANN as well as update AGI_Sys reward and disincentive vectors
 
