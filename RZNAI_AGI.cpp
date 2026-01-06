@@ -555,6 +555,30 @@ void cycle(AGI_Sys * stm) {
         // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
             // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)
 
+        if (cycle % stm->cycles_to_dec == 0) {
+            for (__int32 i = 0; i < stm->hidden_ct; i++)
+                for (__int32 j = 0; j < stm->hidden_sz; j++)
+                    for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
+                        stm->hidden[i]->weights[j][k] = stm->hidden[i]->weights[j][k] >> 1;
+                        if (stm->hidden[i]->weights[j][k] == 0) {
+                            bool* exists = new bool[stm->hidden_sz];
+                            for (__int32 l = 0; l < stm->hidden_sz; l++)
+                                exists[l] = false;
+                            for (__int32 l = 0; l < stm->hidden_sz >> 1; l++)
+                                exists[stm->hidden[i]->targets[j][l]] = true;
+                            __int32 ix = stm->hidden[i]->targets[j][k] + 1;
+                            while (!exists[ix % stm->hidden_sz >> 1])
+                                ix++;
+                            stm->hidden[i]->targets[j][k] = ix % stm->hidden_sz >> 1;
+                            stm->hidden[i]->weights[j][k] = (ix % stm->hidden_sz) % 2 == 0 ? -16384 : 16384;
+                            delete[] exists;
+                        }
+            }
+            for (__int32 i = 0; i < stm->out_sz; i++)
+                for (__int32 j = 0; j < stm->hidden_sz; j++)
+                    stm->hidden[j]->weights[0][i] = stm->hidden[j]->weights[0][i] >> 1;
+        }
+
         cycle++;
         previous_input_state = input;
         previous_output_action = output;
