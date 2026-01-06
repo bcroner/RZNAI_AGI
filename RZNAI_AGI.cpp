@@ -163,7 +163,7 @@ AGI_Sys * instantiate() {
         ret->output_targets [i] = new __int32 [ret->out_sz >> 1];
         for (__int32 j = 0; j < ret->out_sz >> 1; j++) {
             ret->output_weights[i][j] = (j % 2 == 0 ? -16384 : 16384);
-            ret->output_targets[i][j] = (j << 1) % ret->out_sz;
+            ret->output_targets[i][j] = j % ret->out_sz;
         }
     }
 
