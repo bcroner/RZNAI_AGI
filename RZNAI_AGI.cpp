@@ -842,13 +842,13 @@ void cycle(AGI_Sys * stm) {
                     for (__int32 j = 0; j < stm->hidden_sz; j++)
                         for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
                             if (stm->input_targets[i][k] == j && stm->hidden[0]->firings[j])
-                                stm->input_weights[i][k] -= (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+                                stm->input_weights[i][k] -= (k % 2 == 0 ? -stm->dec_amt : stm->dec_amt);
 
             for (__int32 i = 1; i < stm->hidden_ct; i++)
                 for (__int32 j = 0; j < stm->hidden_sz; j++)
                     if (stm->hidden[i]->firings[j])
                         for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                            stm->hidden[i]->weights[j][k] -= (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+                            stm->hidden[i]->weights[j][k] -= (k % 2 == 0 ? -stm->dec_amt : stm->dec_amt);
 
             __int32 temp_output = output;
 
@@ -857,7 +857,7 @@ void cycle(AGI_Sys * stm) {
                     __int32 temp_output = output;
                     for (__int32 k = 0; k < stm->out_sz; k++) {
                         if (temp_output & 0x1)
-                            stm->output_weights[i][j] -= (j % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
+                            stm->output_weights[i][j] -= (j % 2 == 0 ? -stm->dec_amt : stm->dec_amt);
                         temp_output = temp_output >> 1;
                     }
                 }
