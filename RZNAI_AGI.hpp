@@ -26,10 +26,10 @@ typedef struct Dict_Entry_tag {
 
 typedef struct IntNNL_tag {
 
-	__int32 ** weights;
-	__int32 ** targets;
+	__int32** weights;
+	__int32** targets;
 
-	bool * firings;
+	bool* firings;
 
 } IntNNL;
 

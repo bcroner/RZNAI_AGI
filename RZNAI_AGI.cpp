@@ -156,8 +156,8 @@ AGI_Sys * instantiate() {
     ret->hidden_sz = ret->in_sz * ret->In_Q_ct;
     ret->hidden_ct = 16;
 
-    ret->output_weights = new __int32* [ret->hidden_sz];
-    ret->output_targets = new __int32* [ret->hidden_sz];
+    ret->output_weights = new __int32*[ret->hidden_sz];
+    ret->output_targets = new __int32*[ret->hidden_sz];
     for (__int32 i = 0; i < ret->hidden_sz; i++) {
         ret->output_weights [i] = new __int32 [ret->out_sz >> 1];
         ret->output_targets [i] = new __int32 [ret->out_sz >> 1];
@@ -244,18 +244,15 @@ void destroy_agi(AGI_Sys* stm) {
 
     
     for (__int32 count = 0; count < stm->hidden_ct; count++) {
-      
-        for (__int32 i = 0; i < stm->hidden_sz; i++) {
+
+        for (__int32 i = 0; i < stm->hidden_sz >> 1; i++) {
             delete[] stm->hidden[count]->weights[i];
             delete[] stm->hidden[count]->targets[i];
         }
+      
         delete[] stm->hidden[count]->weights;
         delete[] stm->hidden[count]->targets;
-        delete[] stm->hidden[count];
         delete[] stm->hidden[count]->firings;
-        delete[] stm->hidden[count]->weights;
-        delete[] stm->hidden[count]->targets;
-        delete[] stm->hidden[count];
     }
 
     delete[] stm->hidden;
@@ -437,16 +434,21 @@ __int32 perform_iann(AGI_Sys* stm) {
     for (__int32 i = 0; i < stm->out_sz; i++)
         output_b[i] = false;
 
-    for (__int32 i = 0; i < stm->out_sz; i++) {
+    __int32* weight_sums = new __int32[stm->out_sz];
+    for (__int32 i = 0; i < stm->out_sz; i++)
+        weight_sums[i] = 0;
 
-        __int32 sum = 0;
+    for (__int32 i = 0; i < stm->hidden_sz; i++)
+        if (stm->hidden[stm->hidden_ct - 1]->firings[i])
+            for (__int32 j = 0; j < stm->hidden_sz >> 1; j++)
+                for (__int32 k = 0; k < stm->out_sz >> 1; k++)
+                    weight_sums[stm->output_targets[j][k]] += stm->output_weights[j][k];
 
-        for (__int32 j = 0; j < stm->hidden_sz; j++)
-            if (stm->hidden[stm->hidden_ct - 1]->firings[i])
-                sum += stm->hidden[stm->hidden_ct - 1]->weights[0][i];
-        if (sum >= 0)
+    for (__int32 i = 0; i < stm->out_sz; i++)
+        if (weight_sums[i] >= 0)
             output_b[i] = true;
-    }
+
+    delete[] weight_sums;
 
     __int32 ret_output = 0;
 
