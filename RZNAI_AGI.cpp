@@ -950,6 +950,10 @@ void cycle(AGI_Sys * stm) {
                 }
         }
 
+        for (__int32 i = 0; i < stm->hidden_ct; i++)
+            for (__int32 j = 0; j < stm->hidden_sz; j++)
+                stm->hidden[i]->firings[j] = false;
+
         cycle++;
         previous_input_state = input;
         previous_output_action = output;
