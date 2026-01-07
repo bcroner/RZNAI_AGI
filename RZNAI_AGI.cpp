@@ -923,7 +923,7 @@ void cycle(AGI_Sys * stm) {
                             for (__int32 l = 0; l < stm->hidden_sz >> 1; l++)
                                 exists[stm->hidden[i]->targets[j][l]] = true;
                             __int32 ix = stm->hidden[i]->targets[j][k] + 1;
-                            while (!exists[ix % (stm->hidden_sz >> 1]))
+                            while (!exists[ix % (stm->hidden_sz >> 1)])
                                 ix++;
                             stm->hidden[i]->targets[j][k] = ix % stm->hidden_sz;
                             stm->hidden[i]->weights[j][k] = (ix % stm->hidden_sz) % 2 == 0 ? -16384 : 16384;
