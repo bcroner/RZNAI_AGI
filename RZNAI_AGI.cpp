@@ -492,8 +492,7 @@ __int32 read_sensory(AGI_Sys *stm, __int32 sensor) {
 
     // set read from sensory
     input = (input << stm->sensory_bits) | sensor;
-    input = input << 1;
-    input = input & 0x0;
+    input = (input << 1) & 0x0;
 
     return input;
 }
