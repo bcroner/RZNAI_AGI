@@ -491,7 +491,8 @@ __int32 read_sensory(AGI_Sys *stm, __int32 sensor) {
     __int32 sensor_id = 0;
 
     // set read from sensory
-    input = (input << stm->sensory_bits) | sensor;
+    input = (input << stm->sensory_bits) & 0x0;
+    input = input | sensor;
     input = (input << 1) & 0x0;
 
     return input;
@@ -508,8 +509,10 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
         if (stm->kb_rw_path[ix] == -1 || stm->kb_rw_path[ix + 1] == -1)
             return 0;
         __int32 ret_val = stm->kb_rw_path[ix + 1];
-        ret_val = (ret_val << 1) & 0x1; // indicates reading from rewards
-        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |= 0x1; // indicates reading from rewards
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |= 0x1; // indicates read from recall
         return ret_val;
     }
     else {
@@ -521,8 +524,10 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
         if (stm->kb_dv_path[ix] == -1 || stm->kb_dv_path[ix + 1] == -1)
             return 0;
         __int32 ret_val = stm->kb_rw_path[ix + 1];
-        ret_val = (ret_val << 1) & 0x0; // indicates reading from disincentives
-        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |= 0x0; // indicates reading from disincentives
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |= 0x1; // indicates read from recall
         return ret_val;
     }
 }
@@ -552,8 +557,10 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
             return 0;
 
         __int32 ret_val = cur_entry->vect_state;
-        ret_val = (ret_val << 1) & 0x1; // indicates reading from rewards
-        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |= 0x1; // indicates reading from rewards
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |= 0x1; // indicates read from recall
         return ret_val;
     }
     else {
@@ -577,8 +584,10 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
             return 0;
 
         __int32 ret_val = cur_entry->vect_state;
-        ret_val = (ret_val << 1) & 0x0; // indicates reading from disincentives
-        ret_val = (ret_val << 1) & 0x1; // indicates read from recall
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |= 0x0; // indicates reading from disincentives
+        ret_val = (ret_val << 1) & 0x0;
+        ret_val |=| 0x1; // indicates read from recall
         return ret_val;
     }
 }
