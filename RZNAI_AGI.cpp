@@ -907,7 +907,7 @@ void cycle(AGI_Sys * stm) {
                             while (!exists[ix % (stm->In_Q_ct * stm->in_sz)])
                                 ix++;
                             stm->input_targets[i * stm->in_sz + j][k] = ix % (stm->in_sz * stm->In_Q_ct);
-                            stm->input_weights[i * stm->in_sz + j][k] = (ix % stm->in_sz * stm->In_Q_ct) % 2 == 0 ? -16384 : 16384;
+                            stm->input_weights[i * stm->in_sz + j][k] = k % 2 == 0 ? -16384 : 16384;
                             delete[] exists;
                         }
                     }
@@ -926,7 +926,7 @@ void cycle(AGI_Sys * stm) {
                             while (!exists[ix % (stm->hidden_sz >> 1)])
                                 ix++;
                             stm->hidden[i]->targets[j][k] = ix % stm->hidden_sz;
-                            stm->hidden[i]->weights[j][k] = (ix % stm->hidden_sz) % 2 == 0 ? -16384 : 16384;
+                            stm->hidden[i]->weights[j][k] = k % 2 == 0 ? -16384 : 16384;
                             delete[] exists;
                         }
             }
@@ -944,7 +944,7 @@ void cycle(AGI_Sys * stm) {
                         while (!exists[ix % stm->hidden_sz >> 1])
                             ix++;
                         stm->output_targets[i][j] = ix % stm->out_sz;
-                        stm->output_weights[i][j] = (ix % stm->out_sz) % 2 == 0 ? -16384 : 16384;
+                        stm->output_weights[i][j] = j % 2 == 0 ? -16384 : 16384;
                         delete[] exists;
                     }
                 }
