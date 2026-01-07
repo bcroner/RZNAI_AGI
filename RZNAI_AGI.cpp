@@ -479,7 +479,7 @@ __int32 in_1() {
     return 1;
 }
 
-__int32 read_sensory(__int32 sensor) {
+__int32 read_sensory(AGI_Sys *stm, __int32 sensor) {
 
     __int32 input;
 
@@ -488,7 +488,10 @@ __int32 read_sensory(__int32 sensor) {
         case 1: input = in_1(); // get actual reading from sensor 1
     }
 
+    __int32 sensor_id = 0;
+
     // set read from sensory
+    input = (input << stm->sensory_bits) | sensor;
     input = input << 1;
     input = input & 0x0;
 
@@ -672,7 +675,7 @@ void cycle(AGI_Sys * stm) {
         __int32 input = 0;
 
         if (!in_read_from_recall)
-            input = read_sensory(sensor);
+            input = read_sensory(stm, sensor);
         else if (read_from_recall_input || (prev_recall_rwdv != recall_rwdv))
             input = read_from_recall_new(stm, previous_input_state, previous_output_action);
         else

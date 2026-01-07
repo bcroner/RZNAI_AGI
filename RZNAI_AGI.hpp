@@ -97,7 +97,7 @@ __int32 perform_iann(AGI_Sys* stm);
 bool terminate_program(__int32 cycles);
 __int32 in_0();
 __int32 in_1();
-__int32 read_sensory(__int32 sensor);
+__int32 read_sensory(AGI_Sys * stm, __int32 sensor);
 __int32 read_from_recall_next(AGI_Sys* stm, __int32 previous_input_state, __int32 previous_output_action, bool rw);
 __int32 read_from_recall_new(AGI_Sys* stm, __int32 previous_input_state, __int32 previous_output_action, bool rw);
 bool get_rw(__int32 cycle);
