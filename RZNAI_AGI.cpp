@@ -60,7 +60,7 @@ void simp_vector_append(__int32** v, __int32 * vtop, __int32 * vcap, __int32 dat
         *vcap *= 2;
         delete[] * v;
         *v = newv;
-        *v[*vtop] = data;
+        (*v)[*vtop] = data;
     }
 
 }
