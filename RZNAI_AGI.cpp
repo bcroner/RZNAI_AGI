@@ -68,7 +68,7 @@ void simp_vector_append(__int32** v, __int32 * vtop, __int32 * vcap, __int32 dat
         for (__int64 i = 0; i < *vcap * 2; i++)
             newv[i] = 0;
         for (__int64 i = 0; i < *vcap; i++)
-            newv[i] = *v[i];
+            newv[i] = (*v)[i];
         *vcap *= 2;
         delete[] * v;
         *v = newv;
@@ -224,6 +224,13 @@ AGI_Sys * instantiate() {
         ret->Knowledge_Bank[i]->init_state = 0;
         ret->Knowledge_Bank[i]->vect_state = 0;
     }
+
+    // cycle() shifts and writes Input_Queue on its very first statement, and
+    // perform_iann() reads it; nothing allocated it.
+    ret->Current_Input = 0;
+    ret->Input_Queue = new __int32 [ret->In_Q_ct];
+    for (__int32 i = 0; i < ret->In_Q_ct; i++)
+        ret->Input_Queue[i] = 0;
 
     ret->kb_rw_path = 0;
     ret->kb_dv_path = 0;
@@ -403,7 +410,12 @@ void generateBFSs(AGI_Sys* stm) {
 
 __int32 perform_iann(AGI_Sys* stm) {
 
-    bool* input_b = new bool[stm->in_sz * stm->In_Q_ct];
+    // input_weights and input_targets have one row per queued input bit, not
+    // hidden_sz rows.  Indexing them by a hidden-unit number reads past the
+    // end of both arrays and dereferences whatever follows.
+    const __int32 in_units = stm->in_sz * stm->In_Q_ct;
+
+    bool* input_b = new bool[in_units];
 
     for (__int32 i = 0; i < stm->In_Q_ct; i++) {
 
@@ -416,56 +428,62 @@ __int32 perform_iann(AGI_Sys* stm) {
 
     }
 
-    for (__int32 i = 0; i < stm->hidden_sz; i++) {
-        __int32 * weight_sums = new __int32 [stm->hidden_sz];
-        for (__int32 j = 0; j < stm->hidden_sz; j++) {
-            weight_sums[j] = 0;
-            for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                weight_sums[stm->input_targets[j][k]] += input_b[i] ? stm->input_weights[j][k] : 0;
-            if (weight_sums[j] >= 0)
-                stm->hidden[0]->firings[j] = true;
-        }
-    }
+    __int32* weight_sums = new __int32[stm->hidden_sz];
 
+    // input layer: in_units input bits fan out into hidden_sz hidden units
+    for (__int32 j = 0; j < stm->hidden_sz; j++)
+        weight_sums[j] = 0;
+
+    for (__int32 i = 0; i < in_units; i++)
+        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+            weight_sums[stm->input_targets[i][k]] += input_b[i] ? stm->input_weights[i][k] : 0;
+
+    for (__int32 j = 0; j < stm->hidden_sz; j++)
+        stm->hidden[0]->firings[j] = weight_sums[j] >= 0;
+
+    // hidden layers: layer count-1 drives layer count
     for (__int32 count = 1; count < stm->hidden_ct; count++) {
 
-        for (__int32 i = 0; i < stm->hidden_sz; i++) {
-            __int32* weight_sums = new __int32[stm->hidden_sz];
-            for (__int32 j = 0; j < stm->hidden_sz; j++) {
-                weight_sums[j] = 0;
-                for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                    weight_sums[stm->hidden[count - 1]->targets[j][k]] += stm->hidden [count - 1]->firings[i] ? stm->hidden [count - 1]->weights[j][k] : 0;
-                if (weight_sums[j] >= 0)
-                    stm->hidden[i]->firings[j] = true;
-            }
-        }
+        for (__int32 j = 0; j < stm->hidden_sz; j++)
+            weight_sums[j] = 0;
+
+        for (__int32 i = 0; i < stm->hidden_sz; i++)
+            for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
+                weight_sums[stm->hidden[count - 1]->targets[i][k]] +=
+                    stm->hidden[count - 1]->firings[i] ? stm->hidden[count - 1]->weights[i][k] : 0;
+
+        for (__int32 j = 0; j < stm->hidden_sz; j++)
+            stm->hidden[count]->firings[j] = weight_sums[j] >= 0;
     }
 
+    delete[] weight_sums;
+
     bool* output_b = new bool[stm->out_sz];
+    __int32* out_sums = new __int32[stm->out_sz];
 
-    for (__int32 i = 0; i < stm->out_sz; i++)
+    for (__int32 i = 0; i < stm->out_sz; i++) {
         output_b[i] = false;
-
-    __int32* weight_sums = new __int32[stm->out_sz];
-    for (__int32 i = 0; i < stm->out_sz; i++)
-        weight_sums[i] = 0;
+        out_sums[i] = 0;
+    }
 
     for (__int32 i = 0; i < stm->hidden_sz; i++)
         if (stm->hidden[stm->hidden_ct - 1]->firings[i])
-            for (__int32 j = 0; j < stm->hidden_sz >> 1; j++)
-                for (__int32 k = 0; k < stm->out_sz >> 1; k++)
-                    weight_sums[stm->output_targets[j][k]] += stm->output_weights[j][k];
+            for (__int32 k = 0; k < stm->out_sz >> 1; k++)
+                out_sums[stm->output_targets[i][k]] += stm->output_weights[i][k];
 
     for (__int32 i = 0; i < stm->out_sz; i++)
-        if (weight_sums[i] >= 0)
+        if (out_sums[i] >= 0)
             output_b[i] = true;
-
-    delete[] weight_sums;
 
     __int32 ret_output = 0;
 
     for (__int32 i = 0; i < stm->out_sz; i++)
-        ret_output |= (0x1 << i);
+        if (output_b[i])
+            ret_output |= (0x1 << i);
+
+    delete[] out_sums;
+    delete[] output_b;
+    delete[] input_b;
 
     return ret_output;
 }
