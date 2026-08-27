@@ -68,7 +68,7 @@ void simp_vector_append(__int32** v, __int32 * vtop, __int32 * vcap, __int32 dat
         for (__int64 i = 0; i < *vcap * 2; i++)
             newv[i] = 0;
         for (__int64 i = 0; i < *vcap; i++)
-            newv[i] = *v[i];
+            newv[i] = (*v)[i];
         *vcap *= 2;
         delete[] * v;
         *v = newv;
