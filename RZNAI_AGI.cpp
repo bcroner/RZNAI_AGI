@@ -6,6 +6,18 @@
 #ifndef __RZNAI_AGI_CPP__
 #define __RZNAI_AGI_CPP__
 
+// Integration knobs.  All three default to the standalone behaviour, so an
+// unconfigured build is unchanged.
+//
+//   RZNAI_AGI_MAX_CYCLES        how long cycle() runs before terminating
+//   RZNAI_AGI_EXTERNAL_SENSORS  define to supply your own in_0 / in_1 and
+//                               leave the simulation stubs out of the build
+//   RZNAI_AGI_NO_MAIN           define to supply your own driver
+
+#ifndef RZNAI_AGI_MAX_CYCLES
+#define RZNAI_AGI_MAX_CYCLES 2000000000
+#endif
+
 using namespace std;
 
 void simp_queue_enqueue(Simp_Queue* queue, Simp_Queue* parm) {
@@ -460,8 +472,10 @@ __int32 perform_iann(AGI_Sys* stm) {
 
 bool terminate_program(__int32 cycles) {
 
-    return cycles >= 2000000000;    // 2 billion as an example of how long to run the program
+    return cycles >= RZNAI_AGI_MAX_CYCLES;
 }
+
+#ifndef RZNAI_AGI_EXTERNAL_SENSORS
 
 __int32 in_0() {
 
@@ -478,6 +492,8 @@ __int32 in_1() {
     // simulation:
     return 1;
 }
+
+#endif // RZNAI_AGI_EXTERNAL_SENSORS
 
 __int32 read_sensory(AGI_Sys *stm, __int32 sensor) {
 
@@ -980,11 +996,15 @@ void cycle(AGI_Sys * stm) {
 
 }
 
+#ifndef RZNAI_AGI_NO_MAIN
+
 //  Driver function to test above functions
 int main()
 {
     AGI_Sys* stm = instantiate();
     cycle(stm);
 }
+
+#endif // RZNAI_AGI_NO_MAIN
 
 #endif
