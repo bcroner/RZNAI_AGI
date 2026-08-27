@@ -6,6 +6,18 @@
 #ifndef __RZNAI_AGI_CPP__
 #define __RZNAI_AGI_CPP__
 
+// Integration knobs.  All three default to the standalone behaviour, so an
+// unconfigured build is unchanged.
+//
+//   RZNAI_AGI_MAX_CYCLES        how long cycle() runs before terminating
+//   RZNAI_AGI_EXTERNAL_SENSORS  define to supply your own in_0 / in_1 and
+//                               leave the simulation stubs out of the build
+//   RZNAI_AGI_NO_MAIN           define to supply your own driver
+
+#ifndef RZNAI_AGI_MAX_CYCLES
+#define RZNAI_AGI_MAX_CYCLES 2000000000
+#endif
+
 using namespace std;
 
 void simp_queue_enqueue(Simp_Queue* queue, Simp_Queue* parm) {
@@ -399,7 +411,7 @@ __int32 perform_iann(AGI_Sys* stm) {
 
         for (__int32 j = 0; j < stm->in_sz; j++) {
             input_b[i * stm->in_sz + j] = temp_input & 1;
-            temp_input >> 1;
+            temp_input >>= 1;
         }
 
     }
@@ -460,8 +472,10 @@ __int32 perform_iann(AGI_Sys* stm) {
 
 bool terminate_program(__int32 cycles) {
 
-    return cycles >= 2000000000;    // 2 billion as an example of how long to run the program
+    return cycles >= RZNAI_AGI_MAX_CYCLES;
 }
+
+#ifndef RZNAI_AGI_EXTERNAL_SENSORS
 
 __int32 in_0() {
 
@@ -479,21 +493,31 @@ __int32 in_1() {
     return 1;
 }
 
+#endif // RZNAI_AGI_EXTERNAL_SENSORS
+
 __int32 read_sensory(AGI_Sys *stm, __int32 sensor) {
 
     __int32 input;
 
     switch (sensor) {
-        case 0: input = in_0(); // get actual reading from sensor 0
-        case 1: input = in_1(); // get actual reading from sensor 1
+        case 0: input = in_0(); break; // get actual reading from sensor 0
+        case 1: input = in_1(); break; // get actual reading from sensor 1
+        default: return 0;             // no such sensor: nothing was read
     }
 
     __int32 sensor_id = 0;
 
+    for (__int32 i = 0; i < stm->sensory_bits; i++) {
+        sensor_id = sensor_id << 1;
+        sensor_id |= 0x1;
+    }
+
+    sensor_id = sensor & sensor_id; // sensor id, clipped to sensory_bits
+
     // set read from sensory
-    input = (input << stm->sensory_bits) & 0x0;
-    input = input | sensor;
-    input = (input << 1) & 0x0;
+    input = (input << stm->sensory_bits);
+    input = input | sensor_id;
+    input = (input << 1) | 0x0; // indicates NOT read from recall
 
     return input;
 }
@@ -505,13 +529,13 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
             return 0;
         __int32 ix = 0;
         while (stm->kb_rw_path[ix] != -1 && stm->kb_rw_path[ix] != previous_input_state)
-            ix;
+            ix++;
         if (stm->kb_rw_path[ix] == -1 || stm->kb_rw_path[ix + 1] == -1)
             return 0;
         __int32 ret_val = stm->kb_rw_path[ix + 1];
-        ret_val = (ret_val << 1) & 0x0;
+        ret_val = (ret_val << 1);
         ret_val |= 0x1; // indicates reading from rewards
-        ret_val = (ret_val << 1) & 0x0;
+        ret_val = (ret_val << 1);
         ret_val |= 0x1; // indicates read from recall
         return ret_val;
     }
@@ -520,13 +544,13 @@ __int32 read_from_recall_next(AGI_Sys *stm, __int32 previous_input_state, __int3
             return 0;
         __int32 ix = 0;
         while (stm->kb_dv_path[ix] != -1 && stm->kb_dv_path[ix] != previous_input_state)
-            ix;
+            ix++;
         if (stm->kb_dv_path[ix] == -1 || stm->kb_dv_path[ix + 1] == -1)
             return 0;
-        __int32 ret_val = stm->kb_rw_path[ix + 1];
-        ret_val = (ret_val << 1) & 0x0;
+        __int32 ret_val = stm->kb_dv_path[ix + 1];
+        ret_val = (ret_val << 1);
         ret_val |= 0x0; // indicates reading from disincentives
-        ret_val = (ret_val << 1) & 0x0;
+        ret_val = (ret_val << 1);
         ret_val |= 0x1; // indicates read from recall
         return ret_val;
     }
@@ -557,9 +581,9 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
             return 0;
 
         __int32 ret_val = cur_entry->vect_state;
-        ret_val = (ret_val << 1) & 0x0;
+        ret_val = (ret_val << 1);
         ret_val |= 0x1; // indicates reading from rewards
-        ret_val = (ret_val << 1) & 0x0;
+        ret_val = (ret_val << 1);
         ret_val |= 0x1; // indicates read from recall
         return ret_val;
     }
@@ -584,10 +608,10 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
             return 0;
 
         __int32 ret_val = cur_entry->vect_state;
-        ret_val = (ret_val << 1) & 0x0;
+        ret_val = (ret_val << 1);
         ret_val |= 0x0; // indicates reading from disincentives
-        ret_val = (ret_val << 1) & 0x0;
-        ret_val |=| 0x1; // indicates read from recall
+        ret_val = (ret_val << 1);
+        ret_val |= 0x1; // indicates read from recall
         return ret_val;
     }
 }
@@ -685,9 +709,9 @@ void cycle(AGI_Sys * stm) {
         if (!in_read_from_recall)
             input = read_sensory(stm, sensor);
         else if (read_from_recall_input || (prev_recall_rwdv != recall_rwdv))
-            input = read_from_recall_new(stm, previous_input_state, previous_output_action);
+            input = read_from_recall_new(stm, previous_input_state, previous_output_action, recall_rwdv);
         else
-            input = read_from_recall_next(stm, previous_input_state, previous_output_action); 
+            input = read_from_recall_next(stm, previous_input_state, previous_output_action, recall_rwdv); 
 
         stm->Current_Input = input;
         stm->Input_Queue[0] = stm->Current_Input;
@@ -972,11 +996,15 @@ void cycle(AGI_Sys * stm) {
 
 }
 
+#ifndef RZNAI_AGI_NO_MAIN
+
 //  Driver function to test above functions
 int main()
 {
     AGI_Sys* stm = instantiate();
     cycle(stm);
 }
+
+#endif // RZNAI_AGI_NO_MAIN
 
 #endif
