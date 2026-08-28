@@ -101,6 +101,15 @@ void simp_stack_push(__int32** s, __int32* vtop, __int32* vcap, __int32 data) {
 
 }
 
+// A state value is an arbitrary 32-bit word, and C++ yields a negative result
+// for a negative left operand, so a bare `state % prime` can index before the
+// start of the bank. Every Knowledge Bank lookup goes through this.
+static __int64 kb_bucket(__int64 state, __int64 prime) {
+
+    __int64 b = state % prime;
+    return b < 0 ? b + prime : b;
+}
+
 Dict_Entry** create_dict (__int64 prime_sz) {
 
     Dict_Entry** ret = new Dict_Entry * [prime_sz];
@@ -119,7 +128,7 @@ Dict_Entry** create_dict (__int64 prime_sz) {
 
 void create_dict_entry(Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao, __int32 vs) {
 
-    Dict_Entry* p = d [is % prime_sz];
+    Dict_Entry* p = d [kb_bucket(is, prime_sz)];
 
     while (p->next != 0 && ( p->init_state < is || (p->init_state == is && p->action_out < ao)))
         p = p->next;
@@ -140,7 +149,7 @@ void create_dict_entry(Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao,
 
 void remove_dict_entry (Dict_Entry** d, __int64 prime_sz, __int32 is, __int32 ao) {
 
-    Dict_Entry* p = d[is % prime_sz];
+    Dict_Entry* p = d[kb_bucket(is, prime_sz)];
 
     if (p->next == 0)
         return;
@@ -290,118 +299,204 @@ void destroy_agi(AGI_Sys* stm) {
 
 }
 
+// --- BFS bookkeeping -------------------------------------------------------
+//
+// The Knowledge Bank is a graph whose nodes are input-state values: arbitrary
+// 32-bit words, not dense node numbers. executeBFS() needs "have I visited
+// this state" and "which state did I reach it from", so it needs a map keyed
+// by state.
+//
+// Open addressing with linear probing, storing the key alongside the value so
+// two states that hash alike resolve rather than being conflated. Capacity is
+// a power of two and doubles at half load, so lookup stays O(1) and the table
+// can hold as many states as the bank accumulates.
+
+typedef struct BFS_Map_tag {
+    __int32* key;
+    __int32* val;      // the state this key was reached from
+    bool*    used;
+    __int32  cap;      // power of two
+    __int32  count;
+} BFS_Map;
+
+static __int32 bfs_map_slot(const BFS_Map* m, __int32 key) {
+
+    unsigned h = (unsigned)key * 2654435761u;
+    h ^= h >> 16;
+
+    __int32 i = (__int32)(h & (unsigned)(m->cap - 1));
+    while (m->used[i] && m->key[i] != key)
+        i = (i + 1) & (m->cap - 1);
+
+    return i;
+}
+
+static void bfs_map_init(BFS_Map* m, __int32 hint) {
+
+    __int32 cap = 16;
+    while (cap < hint)
+        cap <<= 1;
+
+    m->key   = new __int32[cap];
+    m->val   = new __int32[cap];
+    m->used  = new bool[cap];
+    m->cap   = cap;
+    m->count = 0;
+
+    for (__int32 i = 0; i < cap; i++)
+        m->used[i] = false;
+}
+
+static void bfs_map_free(BFS_Map* m) {
+
+    delete[] m->key;
+    delete[] m->val;
+    delete[] m->used;
+
+    m->key = 0;
+    m->val = 0;
+    m->used = 0;
+    m->cap = 0;
+    m->count = 0;
+}
+
+static void bfs_map_grow(BFS_Map* m) {
+
+    BFS_Map bigger;
+    bfs_map_init(&bigger, m->cap * 2);
+
+    for (__int32 i = 0; i < m->cap; i++)
+        if (m->used[i]) {
+            __int32 s = bfs_map_slot(&bigger, m->key[i]);
+            bigger.used[s] = true;
+            bigger.key[s] = m->key[i];
+            bigger.val[s] = m->val[i];
+            bigger.count++;
+        }
+
+    bfs_map_free(m);
+    *m = bigger;
+}
+
+// Slot holding key, or -1 when the key is absent.
+static __int32 bfs_map_find(const BFS_Map* m, __int32 key) {
+
+    __int32 i = bfs_map_slot(m, key);
+    return m->used[i] ? i : -1;
+}
+
+static void bfs_map_put(BFS_Map* m, __int32 key, __int32 val) {
+
+    if ((m->count + 1) * 2 > m->cap)
+        bfs_map_grow(m);
+
+    __int32 i = bfs_map_slot(m, key);
+
+    if (!m->used[i]) {
+        m->used[i] = true;
+        m->key[i] = key;
+        m->count++;
+    }
+
+    m->val[i] = val;
+}
+
 __int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix) {
 
     const __int32 goal = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
 
-    // UNRESOLVED, and the reason this function cannot yet do its job:
-    // parent[] and visited[] are sized by kbsts but indexed by raw state
-    // values. kbsts is set to 0 in instantiate() and never incremented, so
-    // both arrays are zero-length and `visited[cur] = true` corrupts the heap.
-    // Sizing them correctly is not enough either -- states are arbitrary
-    // 32-bit input words, not dense node numbers, so the BFS needs a
-    // state-to-index mapping that does not exist anywhere in this codebase.
-    // Choosing one is a design decision rather than a repair.
-    //
-    // Until it is made, refuse to search rather than corrupt memory, and
-    // return a well-formed single-element path so callers stay safe:
-    // generateBFSs() scans the result for `goal`, so this reads as a
-    // zero-distance path and costs nothing.
-    if (stm->kbsts <= 0) {
-        __int32* ret = new __int32[1];
-        ret[0] = goal;
-        return ret;
-    }
+    // seen maps a reached state to the state it was reached from. The root is
+    // its own parent, which is what terminates the walk back.
+    BFS_Map seen;
+    bfs_map_init(&seen, stm->kbpsz);
+    bfs_map_put(&seen, cur, cur);
 
-    __int32* parent = new __int32[stm->kbsts];
-    bool* visited = new bool [stm->kbsts];
+    // A plain array used as a FIFO. Simp_Queue would serve, but
+    // simp_queue_dequeue() walks to the tail on every pop, which would make
+    // the search quadratic in the size of the Knowledge Bank.
+    __int32  qcap  = 256;
+    __int32* queue = new __int32[qcap];
+    __int32  qhead = 0;
+    __int32  qtail = 0;
 
-    for (__int32 i = 0; i < stm->kbsts; i++) {
-        parent[i] = 0;
-        visited[i] = false;
-    }
+    queue[qtail++] = cur;
 
-    Simp_Queue* bfs_queue = new Simp_Queue();
-    bfs_queue->next = 0;
+    bool found = (goal == cur);
 
-    if (cur >= 0 && cur < stm->kbsts)
-        visited[cur] = true;
+    while (qhead < qtail && !found) {
 
-    Simp_Queue* c = new Simp_Queue();
-    c->data = cur;
-    c->next = 0;
-    simp_queue_enqueue (bfs_queue, c);
+        __int32 node = queue[qhead++];
 
-    // `while (!bfs_queue->next != 0)` ran the loop only while the queue was
-    // EMPTY, then dequeued from it and dereferenced the null result.
-    while (bfs_queue->next != 0) {
-        Simp_Queue* cv = simp_queue_dequeue(bfs_queue);
-        if (cv == 0)
-            break;
-
-        __int32 bucket = cv->data % stm->kbpsz;
-        if (bucket < 0 || bucket >= stm->kbpsz) {
-            delete cv;
-            continue;
-        }
-
-        Dict_Entry* pos = stm->Knowledge_Bank[bucket]->next;
-        while (pos != 0 && pos->init_state != cv->data)
+        Dict_Entry* pos = stm->Knowledge_Bank[kb_bucket(node, stm->kbpsz)]->next;
+        while (pos != 0 && pos->init_state != node)
             pos = pos->next;
 
-        while ( pos != 0 && pos->init_state == cv->data) {
+        while (pos != 0 && pos->init_state == node) {
 
-            __int32 v = pos->vect_state;
-            if (v >= 0 && v < stm->kbsts && !visited[v]) {
-                parent[v] = pos->init_state;
-                visited[v] = true;
-                Simp_Queue* q = new Simp_Queue();
-                q->data = v;
-                q->next = 0;
-                simp_queue_enqueue(bfs_queue, q);
+            if (bfs_map_find(&seen, pos->vect_state) < 0) {
+
+                bfs_map_put(&seen, pos->vect_state, node);
+
+                if (pos->vect_state == goal) {
+                    found = true;
+                    break;
+                }
+
+                if (qtail == qcap) {
+                    __int32* bigger = new __int32[qcap * 2];
+                    for (__int32 i = 0; i < qtail; i++)
+                        bigger[i] = queue[i];
+                    delete[] queue;
+                    queue = bigger;
+                    qcap *= 2;
+                }
+                queue[qtail++] = pos->vect_state;
             }
 
             pos = pos->next;
         }
-
-        delete cv;
     }
 
-    delete bfs_queue;
+    delete[] queue;
 
-    // count path from stm->rewards[ix]/stm->dsnctvs[i] back to cur.
-    // The original walk had no termination guard, so an unreachable goal ran
-    // off the end of parent[]; bound it by the number of states.
-
+    // Count the path back from the goal to cur. Bounded by the number of
+    // states discovered, so a broken chain cannot loop forever.
     __int32 count_path = 1;
-    {
+
+    if (found) {
         __int32 tracker = goal;
-        while (count_path <= stm->kbsts &&
-               tracker >= 0 && tracker < stm->kbsts &&
-               parent[tracker] != cur) {
-            tracker = parent[tracker];
+        while (tracker != cur) {
+            __int32 s = bfs_map_find(&seen, tracker);
+            if (s < 0 || count_path > seen.count) {
+                found = false;
+                count_path = 1;
+                break;
+            }
+            tracker = seen.val[s];
             count_path++;
         }
     }
 
-    // The original filled parent[] in this loop instead of ret[], so the array
-    // it returned was left almost entirely uninitialised.
+    // generateBFSs() scans the result forward for `goal`, so the goal must be
+    // present and last. When the goal is unreachable this is a single-element
+    // path, which that caller reads as distance zero and which makes
+    // read_from_recall_new() return 0 -- a failed recall, handled by cycle().
     __int32* ret = new __int32[count_path];
     for (__int32 i = 0; i < count_path; i++)
         ret[i] = goal;
 
-    {
+    if (found) {
         __int32 tracker = goal;
-        for (__int32 i = 1; i < count_path; i++) {
-            if (tracker < 0 || tracker >= stm->kbsts)
+        for (__int32 i = count_path - 1; i >= 0; i--) {
+            ret[i] = tracker;
+            __int32 s = bfs_map_find(&seen, tracker);
+            if (s < 0)
                 break;
-            tracker = parent[tracker];
-            ret[count_path - 1 - i] = tracker;
+            tracker = seen.val[s];
         }
     }
 
-    delete[] parent;
-    delete[] visited;
+    bfs_map_free(&seen);
 
     return ret;
 }
@@ -414,10 +509,10 @@ void generateBFSs(AGI_Sys* stm) {
     __int32** dvpaths = new __int32* [stm->dvtop + 1];
 
     for (__int32 i = 0; i < stm->rwtop + 1; i++)
-        rwpaths [i] = executeBFS(stm, stm->Current_Input >> 1, true, i);
+        rwpaths [i] = executeBFS(stm, stm->Current_Input >> (stm->sensory_bits + 1), true, i);
        
     for (__int32 i = 0; i < stm->dvtop + 1; i++)
-        dvpaths [i] = executeBFS(stm, stm->Current_Input >> 1, false, i);
+        dvpaths [i] = executeBFS(stm, stm->Current_Input >> (stm->sensory_bits + 1), false, i);
 
     __int32 rw_dist = 2000000000;
 
@@ -642,7 +737,7 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
             i++;
         if (stm->kb_rw_path[i + 1] == -1 || stm->kb_rw_path[i] != previous_input_state)
             return 0;
-        __int32 kb_line = previous_input_state % stm->kbpsz;
+        __int64 kb_line = kb_bucket(previous_input_state, stm->kbpsz);
         Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
         while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
             cur_entry = cur_entry->next;
@@ -669,7 +764,7 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
             i++;
         if (stm->kb_dv_path[i + 1] == -1 || stm->kb_dv_path[i] != previous_input_state)
             return 0;
-        __int32 kb_line = previous_input_state % stm->kbpsz;
+        __int64 kb_line = kb_bucket(previous_input_state, stm->kbpsz);
         Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
         while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
             cur_entry = cur_entry->next;
@@ -692,15 +787,22 @@ __int32 read_from_recall_new(AGI_Sys *stm, __int32 previous_input_state, __int32
 bool get_rw(__int32 cycle) {
     // actually fetch reward bit
 
-    // simulation:
-    return cycle % 32767;
+    // simulation: a reward every 32767 cycles.
+    //
+    // `return cycle % 32767;` is true for every cycle EXCEPT multiples of the
+    // period, so reward and disincentive both fired on nearly every cycle and
+    // fought each other -- one adding a state to rewards while the other
+    // removed it. The reward vectors could never settle, which left
+    // executeBFS() with no goal to search for.
+    return cycle % 32767 == 0;
 }
 
 bool get_dv(__int32 cycle) {
     // actually fetch disincentive bit
 
-    // simulation:
-    return cycle % 65537;
+    // simulation: a disincentive every 65537 cycles. Inverted for the same
+    // reason as get_rw().
+    return cycle % 65537 == 0;
 }
 
 void out_0(__int32 parm) {
@@ -754,30 +856,27 @@ void cycle(AGI_Sys * stm) {
     __int32 previous_output_action = 0;
 
     bool out_read_from_recall = false;
-
-    // NOTE: in_read_from_recall and read_from_recall_input are never assigned
-    // after this point, so `if (!in_read_from_recall)` below is always true.
-    // The model therefore always reads from a sensor and never from recall,
-    // which makes read_from_recall_new(), read_from_recall_next(),
-    // generateBFSs(), executeBFS() and every Knowledge Bank lookup unreachable
-    // -- create_dict_entry() writes to the bank every cycle and nothing reads
-    // it back.
-    //
-    // out_read_from_recall already holds the decision (output & 0x1); the
-    // missing step is propagating it here, e.g. at the end of the loop body
-    //     read_from_recall_input = !in_read_from_recall;
-    //     in_read_from_recall    = out_read_from_recall;
-    //
-    // That one change is NOT sufficient on its own, and is deliberately not
-    // made here. Enabling recall exposes two open questions:
-    //   1. executeBFS() cannot search until the state-to-index mapping is
-    //      decided -- see the comment there.
-    //   2. Nothing returns the model to sensory input once bit 0 latches, so
-    //      it reads a sensor once and then never looks at the world again.
-    // Measured: with recall enabled the model served 1 sensory reading in 2000
-    // cycles and recalled 0 for the rest.
     bool in_read_from_recall = false;
     bool read_from_recall_input = false;
+
+    // Recall is a bounded excursion, never an absorbing state.
+    //
+    // out_read_from_recall (output & 0x1) is the model's request to read from
+    // the Knowledge Bank instead of a sensor on the next cycle. Honouring it
+    // unconditionally makes the request latch: the model reads the world once
+    // and never looks again, because nothing ever clears it. Two limits keep
+    // perception alive.
+    //
+    //   1. At most In_Q_ct - 1 recalls in a row, so at least one genuine
+    //      observation always remains in Input_Queue. Recalling for longer
+    //      than the queue is deep would leave the network reasoning about a
+    //      window containing no sensory data at all.
+    //   2. A recall that yields 0 -- this file's failure sentinel, returned by
+    //      both read_from_recall_* functions when there is no path -- returns
+    //      to the sensors immediately. Unproductive introspection should yield
+    //      to perception.
+    __int32 recall_run = 0;
+    const __int32 max_recall_run = stm->In_Q_ct > 1 ? stm->In_Q_ct - 1 : 1;
     bool prev_recall_rwdv = true; // true bit indicates rewards, false bit indicates disincentives
     bool recall_rwdv = true;
 
@@ -801,15 +900,28 @@ void cycle(AGI_Sys * stm) {
 
         __int32 input = 0;
 
-        if (!in_read_from_recall)
+        if (!in_read_from_recall) {
             input = read_sensory(stm, sensor);
-        else if (read_from_recall_input || (prev_recall_rwdv != recall_rwdv))
-            input = read_from_recall_new(stm, previous_input_state, previous_output_action, recall_rwdv);
-        else
-            input = read_from_recall_next(stm, previous_input_state, previous_output_action, recall_rwdv); 
+            recall_run = 0;
+        }
+        else {
+            if (read_from_recall_input || (prev_recall_rwdv != recall_rwdv))
+                input = read_from_recall_new(stm, previous_input_state, previous_output_action, recall_rwdv);
+            else
+                input = read_from_recall_next(stm, previous_input_state, previous_output_action, recall_rwdv);
+            recall_run++;
+        }
 
         stm->Current_Input = input;
         stm->Input_Queue[0] = stm->Current_Input;
+
+        // The identity of a state, as distinct from the word that carried it.
+        // Bit 0 records where the word came from -- a sensor or recall -- and
+        // is not part of what the state means; generateBFSs() already strips
+        // it before searching. Everything that stores or compares a state uses
+        // this, so the Knowledge Bank, the reward vectors and the BFS all
+        // speak the same language.
+        __int32 input_state = input >> (stm->sensory_bits + 1);
 
         // feed into IANN and fetch output bit sequence
 
@@ -818,7 +930,7 @@ void cycle(AGI_Sys * stm) {
         // update Knowledge Bank with (previous input state, output action) -> (newly read input)
 
         bool entry_exists = false;
-        __int32 kb_line = previous_input_state % stm->kbpsz;
+        __int64 kb_line = kb_bucket(previous_input_state, stm->kbpsz);
         Dict_Entry* cur_entry = stm->Knowledge_Bank[kb_line]->next;
         while (cur_entry != 0 && cur_entry->init_state != previous_input_state)
             cur_entry = cur_entry->next;
@@ -834,7 +946,15 @@ void cycle(AGI_Sys * stm) {
         if (entry_exists)
             remove_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, previous_output_action);
 
-        create_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, input >> 1, output);
+        // Declared as (init_state, action_out, vect_state), and the comment
+        // above says "(previous input state, output action) -> (newly read
+        // input)". The last two arguments were transposed: vect_state was set
+        // to `output`, a 4-bit action, so every edge in the bank pointed from
+        // an input state to an action value and the graph was untraversable --
+        // which is why executeBFS() could never reach a reward. The key also
+        // has to match the remove_dict_entry() call directly above, which uses
+        // previous_output_action.
+        create_dict_entry(stm->Knowledge_Bank, stm->kbpsz, previous_input_state, previous_output_action, input_state);
 
         out_read_from_recall = output & 0x1;
         sensor = (output >> 1) & sensor_mask;
@@ -853,19 +973,19 @@ void cycle(AGI_Sys * stm) {
 
             bool found = false;
             for (__int32 i = 0; i < stm->rwtop + 1; i++)
-                if (stm->rewards[i] != input)
+                if (stm->rewards[i] != input_state)
                     continue;
                 else
                     found = true;
                
             if (!found)
-                simp_vector_append(&(stm->rewards), &(stm->rwtop), &(stm->rwcap), input);
+                simp_vector_append(&(stm->rewards), &(stm->rwtop), &(stm->rwcap), input_state);
 
             found = false;
 
             __int32 ix = 0;
             for (ix = 0; ix < stm->dvtop + 1; ix++)
-                if (stm->dsnctvs[ix] != input)
+                if (stm->dsnctvs[ix] != input_state)
                     continue;
                 else
                     found = true;
@@ -923,31 +1043,40 @@ void cycle(AGI_Sys * stm) {
         }
         if (dv) {
 
+            // Mirror of the rw branch above, which adds to rewards and drops
+            // the state from disincentives. This one adds to disincentives and
+            // drops it from rewards.
+            //
+            // As written both halves worked on the same vector -- the first
+            // scan read rewards[] while walking dvtop, and the removal both
+            // scanned and shrank dsnctvs -- so a state was appended and then
+            // immediately removed again. dvtop never left -1 and no
+            // disincentive was ever recorded.
             bool found = false;
             for (__int32 i = 0; i < stm->dvtop + 1; i++)
-                if (stm->rewards[i] != input)
+                if (stm->dsnctvs[i] != input_state)
                     continue;
                 else
                     found = true;
 
             if (!found)
-                simp_vector_append(&(stm->rewards), &(stm->dvtop), &(stm->dvcap), input);
+                simp_vector_append(&(stm->dsnctvs), &(stm->dvtop), &(stm->dvcap), input_state);
 
             found = false;
 
             __int32 ix = 0;
-            for (ix = 0; ix < stm->dvtop + 1; ix++)
-                if (stm->dsnctvs[ix] != input)
+            for (ix = 0; ix < stm->rwtop + 1; ix++)
+                if (stm->rewards[ix] != input_state)
                     continue;
                 else
                     found = true;
 
             if (found) {
-                while (ix < stm->dvtop) {
-                    stm->dsnctvs[ix] = stm->dsnctvs[ix + 1];
+                while (ix < stm->rwtop) {
+                    stm->rewards[ix] = stm->rewards[ix + 1];
                     ix++;
                 }
-                stm->dvtop--;
+                stm->rwtop--;
             }
 
             bool* inputs = new bool[stm->in_sz * stm->In_Q_ct];
@@ -1084,8 +1213,25 @@ void cycle(AGI_Sys * stm) {
             for (__int32 j = 0; j < stm->hidden_sz; j++)
                 stm->hidden[i]->firings[j] = false;
 
+        // Carry the recall decision to the next cycle, subject to the two
+        // limits described at the declaration of recall_run.
+        {
+            bool want_recall = out_read_from_recall;
+
+            if (recall_run >= max_recall_run)
+                want_recall = false;                  // keep perceiving
+            if (in_read_from_recall && input == 0)
+                want_recall = false;                  // recall found nothing
+
+            // True only on the transition into recall, which selects
+            // read_from_recall_new() -- and so a fresh generateBFSs() -- over
+            // continuing an existing path with read_from_recall_next().
+            read_from_recall_input = !in_read_from_recall;
+            in_read_from_recall = want_recall;
+        }
+
         cycle++;
-        previous_input_state = input;
+        previous_input_state = input_state;
         previous_output_action = output;
     }
 
