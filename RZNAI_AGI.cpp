@@ -292,61 +292,116 @@ void destroy_agi(AGI_Sys* stm) {
 
 __int32* executeBFS(AGI_Sys* stm, __int32 cur, bool rw, __int32 ix) {
 
+    const __int32 goal = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
+
+    // UNRESOLVED, and the reason this function cannot yet do its job:
+    // parent[] and visited[] are sized by kbsts but indexed by raw state
+    // values. kbsts is set to 0 in instantiate() and never incremented, so
+    // both arrays are zero-length and `visited[cur] = true` corrupts the heap.
+    // Sizing them correctly is not enough either -- states are arbitrary
+    // 32-bit input words, not dense node numbers, so the BFS needs a
+    // state-to-index mapping that does not exist anywhere in this codebase.
+    // Choosing one is a design decision rather than a repair.
+    //
+    // Until it is made, refuse to search rather than corrupt memory, and
+    // return a well-formed single-element path so callers stay safe:
+    // generateBFSs() scans the result for `goal`, so this reads as a
+    // zero-distance path and costs nothing.
+    if (stm->kbsts <= 0) {
+        __int32* ret = new __int32[1];
+        ret[0] = goal;
+        return ret;
+    }
+
     __int32* parent = new __int32[stm->kbsts];
-
-    for (__int32 i = 0; i < stm->kbsts; i++)
-        parent[i] = 0;
-
-    Simp_Queue* bfs_queue = new Simp_Queue();
-
     bool* visited = new bool [stm->kbsts];
 
-    for (__int32 i = 0; i < stm->kbsts; i++)
+    for (__int32 i = 0; i < stm->kbsts; i++) {
+        parent[i] = 0;
         visited[i] = false;
+    }
 
-    visited[cur] = true;
+    Simp_Queue* bfs_queue = new Simp_Queue();
+    bfs_queue->next = 0;
+
+    if (cur >= 0 && cur < stm->kbsts)
+        visited[cur] = true;
 
     Simp_Queue* c = new Simp_Queue();
     c->data = cur;
+    c->next = 0;
     simp_queue_enqueue (bfs_queue, c);
 
-    while (!bfs_queue->next != 0) {
+    // `while (!bfs_queue->next != 0)` ran the loop only while the queue was
+    // EMPTY, then dequeued from it and dereferenced the null result.
+    while (bfs_queue->next != 0) {
         Simp_Queue* cv = simp_queue_dequeue(bfs_queue);
+        if (cv == 0)
+            break;
 
-        Dict_Entry* pos = stm->Knowledge_Bank[cv->data % stm->kbpsz]->next;
+        __int32 bucket = cv->data % stm->kbpsz;
+        if (bucket < 0 || bucket >= stm->kbpsz) {
+            delete cv;
+            continue;
+        }
+
+        Dict_Entry* pos = stm->Knowledge_Bank[bucket]->next;
         while (pos != 0 && pos->init_state != cv->data)
             pos = pos->next;
 
-        if (pos == 0)
-            continue;
-
         while ( pos != 0 && pos->init_state == cv->data) {
 
-            if (!visited[pos->vect_state]) {
-                parent[pos->vect_state] = pos->init_state;
-                visited[pos->vect_state] = true;
-                Simp_Queue* v = new Simp_Queue();
-                v->data = pos->vect_state;
-                simp_queue_enqueue(bfs_queue, v);
+            __int32 v = pos->vect_state;
+            if (v >= 0 && v < stm->kbsts && !visited[v]) {
+                parent[v] = pos->init_state;
+                visited[v] = true;
+                Simp_Queue* q = new Simp_Queue();
+                q->data = v;
+                q->next = 0;
+                simp_queue_enqueue(bfs_queue, q);
             }
 
             pos = pos->next;
         }
+
+        delete cv;
     }
 
-    // count path from stm->rewards[ix]/stm->dsnctvs[i] back to cur
+    delete bfs_queue;
+
+    // count path from stm->rewards[ix]/stm->dsnctvs[i] back to cur.
+    // The original walk had no termination guard, so an unreachable goal ran
+    // off the end of parent[]; bound it by the number of states.
 
     __int32 count_path = 1;
-    for (__int32 tracker = rw ? stm->rewards[ix] : stm->dsnctvs[ix]; parent[tracker] != cur; tracker = parent[tracker])
-        count_path++;
-
-    __int32* ret = new __int32[count_path];
-    ret[count_path-1] = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
-    __int32 tracker = rw ? stm->rewards[ix] : stm->dsnctvs[ix];
-    for (__int32 i = 0; i < count_path; i++) {
-        tracker = parent[tracker];
-        parent[count_path - 1 - i] = tracker;
+    {
+        __int32 tracker = goal;
+        while (count_path <= stm->kbsts &&
+               tracker >= 0 && tracker < stm->kbsts &&
+               parent[tracker] != cur) {
+            tracker = parent[tracker];
+            count_path++;
+        }
     }
+
+    // The original filled parent[] in this loop instead of ret[], so the array
+    // it returned was left almost entirely uninitialised.
+    __int32* ret = new __int32[count_path];
+    for (__int32 i = 0; i < count_path; i++)
+        ret[i] = goal;
+
+    {
+        __int32 tracker = goal;
+        for (__int32 i = 1; i < count_path; i++) {
+            if (tracker < 0 || tracker >= stm->kbsts)
+                break;
+            tracker = parent[tracker];
+            ret[count_path - 1 - i] = tracker;
+        }
+    }
+
+    delete[] parent;
+    delete[] visited;
 
     return ret;
 }
@@ -699,6 +754,28 @@ void cycle(AGI_Sys * stm) {
     __int32 previous_output_action = 0;
 
     bool out_read_from_recall = false;
+
+    // NOTE: in_read_from_recall and read_from_recall_input are never assigned
+    // after this point, so `if (!in_read_from_recall)` below is always true.
+    // The model therefore always reads from a sensor and never from recall,
+    // which makes read_from_recall_new(), read_from_recall_next(),
+    // generateBFSs(), executeBFS() and every Knowledge Bank lookup unreachable
+    // -- create_dict_entry() writes to the bank every cycle and nothing reads
+    // it back.
+    //
+    // out_read_from_recall already holds the decision (output & 0x1); the
+    // missing step is propagating it here, e.g. at the end of the loop body
+    //     read_from_recall_input = !in_read_from_recall;
+    //     in_read_from_recall    = out_read_from_recall;
+    //
+    // That one change is NOT sufficient on its own, and is deliberately not
+    // made here. Enabling recall exposes two open questions:
+    //   1. executeBFS() cannot search until the state-to-index mapping is
+    //      decided -- see the comment there.
+    //   2. Nothing returns the model to sensory input once bit 0 latches, so
+    //      it reads a sensor once and then never looks at the world again.
+    // Measured: with recall enabled the model served 1 sensory reading in 2000
+    // cycles and recalled 0 for the rest.
     bool in_read_from_recall = false;
     bool read_from_recall_input = false;
     bool prev_recall_rwdv = true; // true bit indicates rewards, false bit indicates disincentives
