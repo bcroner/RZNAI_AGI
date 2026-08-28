@@ -101,6 +101,52 @@ void simp_stack_push(__int32** s, __int32* vtop, __int32* vcap, __int32 data) {
 
 }
 
+// --- connection seeding ----------------------------------------------------
+//
+// Every weight and target must depend on the SOURCE unit, not only on the
+// fan-out slot. Seeding them as `j % 2 ? ... : ...` and `j % hidden_sz` makes
+// every source contribute an identical vector, so the network can only count
+// how many inputs were active and never tell which -- the output is constant
+// whatever it is shown. The reinforcement rule had the same shape, which meant
+// a reward could not strengthen the pathway that earned it.
+//
+// A deterministic mixer keeps the model reproducible: no RNG, no seeding, the
+// same network every run on every platform.
+//
+// Target and weight MUST be drawn with different salts. hidden_sz is even, so
+// `mix % hidden_sz` shares its low bit with `mix`; deriving a target and a
+// weight sign from one value locks every even-numbered unit to negative
+// weights and re-flattens the network exactly as before.
+static __int32 rzn_seed(__int32 source, __int32 slot, __int32 salt) {
+
+    unsigned h = (unsigned)source * 374761393u
+               + (unsigned)slot   * 668265263u
+               + (unsigned)salt   * 2246822519u;
+
+    h ^= h >> 13;
+    h *= 1274126177u;
+    h ^= h >> 16;
+
+    return (__int32)(h & 0x7FFFFFFFu);
+}
+
+#define RZN_SALT_IN_TARGET   0x11
+#define RZN_SALT_IN_WEIGHT   0x22
+#define RZN_SALT_HID_TARGET  0x33
+#define RZN_SALT_HID_WEIGHT  0x44
+#define RZN_SALT_OUT_TARGET  0x55
+#define RZN_SALT_OUT_WEIGHT  0x66
+
+// Weights span both signs at a graded magnitude rather than sitting at exactly
+// +/-16384. Identical magnitudes make every connection equally decisive, so
+// reinforcement has to flip a sign before anything changes; a spread lets a
+// few hundred rewards actually move a decision.
+#define RZN_WEIGHT_SPAN 32768
+static __int32 rzn_seed_weight(__int32 source, __int32 slot, __int32 salt) {
+
+    return rzn_seed(source, slot, salt) % RZN_WEIGHT_SPAN - (RZN_WEIGHT_SPAN / 2);
+}
+
 // A state value is an arbitrary 32-bit word, and C++ yields a negative result
 // for a negative left operand, so a bare `state % prime` can index before the
 // start of the bank. Every Knowledge Bank lookup goes through this.
@@ -183,8 +229,8 @@ AGI_Sys * instantiate() {
         ret->output_weights [i] = new __int32 [ret->out_sz >> 1];
         ret->output_targets [i] = new __int32 [ret->out_sz >> 1];
         for (__int32 j = 0; j < ret->out_sz >> 1; j++) {
-            ret->output_weights[i][j] = (j % 2 == 0 ? -16384 : 16384);
-            ret->output_targets[i][j] = j % ret->out_sz;
+            ret->output_weights[i][j] = rzn_seed_weight(i, j, RZN_SALT_OUT_WEIGHT);
+            ret->output_targets[i][j] = rzn_seed(i, j, RZN_SALT_OUT_TARGET) % ret->out_sz;
         }
     }
 
@@ -194,8 +240,8 @@ AGI_Sys * instantiate() {
         ret->input_weights[i] = new __int32[ret->hidden_sz >> 1];
         ret->input_targets[i] = new __int32[ret->hidden_sz >> 1];
         for (__int32 j = 0; j < ret->hidden_sz >> 1; j++) {
-            ret->input_weights[i][j] = ( j % 2 == 0 ? -16384 : 16384 );
-            ret->input_targets[i][j] = j % ret->hidden_sz;
+            ret->input_weights[i][j] = rzn_seed_weight(i, j, RZN_SALT_IN_WEIGHT);
+            ret->input_targets[i][j] = rzn_seed(i, j, RZN_SALT_IN_TARGET) % ret->hidden_sz;
         }
     }
 
@@ -208,8 +254,10 @@ AGI_Sys * instantiate() {
             ret->hidden[count]->weights[i] = new __int32[ret->hidden_sz >> 1];
             ret->hidden[count]->targets[i] = new __int32[ret->hidden_sz >> 1];
             for (__int32 j = 0; j < ret->hidden_sz >> 1; j++) {
-                ret->hidden[count]->weights[i][j] = j % 2 == 0 ? -16384 : 16384;
-                ret->hidden[count]->targets[i][j] = j % ret->hidden_sz;
+                ret->hidden[count]->weights[i][j] =
+                    rzn_seed_weight(count * 7919 + i, j, RZN_SALT_HID_WEIGHT);
+                ret->hidden[count]->targets[i][j] =
+                    rzn_seed(count * 7919 + i, j, RZN_SALT_HID_TARGET) % ret->hidden_sz;
             }
         }
         ret->hidden[count]->firings = new bool[ret->hidden_sz];
@@ -218,8 +266,13 @@ AGI_Sys * instantiate() {
     }
 
     ret->cycles_to_dec = 1048576;
-    ret->dec_amt = 1;
-    ret->inc_amt = 1;
+
+    // A step of 1 against a weight of ~16384 is imperceptible: it would take
+    // thousands of rewards to change any decision, so learning was invisible
+    // even once the rule was correct. This puts a decision within reach of a
+    // few hundred reinforcements while still being small next to the spread.
+    ret->dec_amt = RZN_WEIGHT_SPAN / 512;
+    ret->inc_amt = RZN_WEIGHT_SPAN / 512;
 
     ret->kbpsz = 7919;
     ret->kbsz = 0;
@@ -1012,33 +1065,45 @@ void cycle(AGI_Sys * stm) {
                 }
             }
 
-            __int32* sums = new __int32[stm->hidden_sz];
-            for (__int32 i = 0; i < stm->hidden_sz; i++)
-                sums[i] = 0;
+            // Reinforce the pathway that produced this outcome. The direction
+            // keyed on the fan-out index before, which is independent of what
+            // the connection did, so a reward could not strengthen what earned
+            // it -- it only pushed weights apart by slot parity, the same
+            // degenerate structure instantiate() used to start from.
+            //
+            // A connection is strengthened when it pushed its target the way
+            // the target actually went, and weakened when it pushed the other
+            // way. The j loop testing `input_targets[i][k] == j` is also gone:
+            // input_targets[i][k] IS the target, so scanning every hidden unit
+            // to find it was hidden_sz times more work for the same answer.
+
+            // input layer: active input bits into layer 0
             for (__int32 i = 0; i < stm->in_sz * stm->In_Q_ct; i++)
                 if (inputs[i])
-                    for (__int32 j = 0; j < stm->hidden_sz; j++)
-                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                            if (stm->input_targets[i][k] == j && stm->hidden[0]->firings[j])
-                                stm->input_weights[i][k] += (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
-
-            for (__int32 i = 1; i < stm->hidden_ct; i++)
-                for (__int32 j = 0; j < stm->hidden_sz; j++)
-                    if (stm->hidden[i]->firings[j])
-                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                            stm->hidden[i]->weights[j][k] += (k % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
-
-            __int32 temp_output = output;
-
-            for (__int32 i = 0; i < stm->hidden_sz; i++)
-                for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
-                    __int32 temp_output = output;
-                    for (__int32 k = 0; k < stm->out_sz; k++) {
-                        if (temp_output & 0x1)
-                            stm->output_weights[i][j] += (j % 2 == 0 ? -stm->inc_amt : stm->inc_amt);
-                        temp_output = temp_output >> 1;
+                    for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
+                        __int32 t = stm->input_targets[i][k];
+                        stm->input_weights[i][k] +=
+                            (stm->hidden[0]->firings[t] ? stm->inc_amt : -stm->inc_amt);
                     }
-                }
+
+            // hidden layers: layer c drives layer c + 1
+            for (__int32 c = 0; c + 1 < stm->hidden_ct; c++)
+                for (__int32 i = 0; i < stm->hidden_sz; i++)
+                    if (stm->hidden[c]->firings[i])
+                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
+                            __int32 t = stm->hidden[c]->targets[i][k];
+                            stm->hidden[c]->weights[i][k] +=
+                                (stm->hidden[c + 1]->firings[t] ? stm->inc_amt : -stm->inc_amt);
+                        }
+
+            // output layer: last hidden layer into the action bits that fired
+            for (__int32 i = 0; i < stm->hidden_sz; i++)
+                if (stm->hidden[stm->hidden_ct - 1]->firings[i])
+                    for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
+                        __int32 t = stm->output_targets[i][j];
+                        stm->output_weights[i][j] +=
+                            (((output >> t) & 0x1) ? stm->inc_amt : -stm->inc_amt);
+                    }
 
         }
         if (dv) {
@@ -1093,33 +1158,45 @@ void cycle(AGI_Sys * stm) {
                 }
             }
 
-            __int32* sums = new __int32[stm->hidden_sz];
-            for (__int32 i = 0; i < stm->hidden_sz; i++)
-                sums[i] = 0;
+            // Reinforce the pathway that produced this outcome. The direction
+            // keyed on the fan-out index before, which is independent of what
+            // the connection did, so a reward could not strengthen what earned
+            // it -- it only pushed weights apart by slot parity, the same
+            // degenerate structure instantiate() used to start from.
+            //
+            // A connection is strengthened when it pushed its target the way
+            // the target actually went, and weakened when it pushed the other
+            // way. The j loop testing `input_targets[i][k] == j` is also gone:
+            // input_targets[i][k] IS the target, so scanning every hidden unit
+            // to find it was hidden_sz times more work for the same answer.
+
+            // input layer: active input bits into layer 0
             for (__int32 i = 0; i < stm->in_sz * stm->In_Q_ct; i++)
                 if (inputs[i])
-                    for (__int32 j = 0; j < stm->hidden_sz; j++)
-                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                            if (stm->input_targets[i][k] == j && stm->hidden[0]->firings[j])
-                                stm->input_weights[i][k] -= (k % 2 == 0 ? -stm->dec_amt : stm->dec_amt);
-
-            for (__int32 i = 1; i < stm->hidden_ct; i++)
-                for (__int32 j = 0; j < stm->hidden_sz; j++)
-                    if (stm->hidden[i]->firings[j])
-                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++)
-                            stm->hidden[i]->weights[j][k] -= (k % 2 == 0 ? -stm->dec_amt : stm->dec_amt);
-
-            __int32 temp_output = output;
-
-            for (__int32 i = 0; i < stm->hidden_sz; i++)
-                for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
-                    __int32 temp_output = output;
-                    for (__int32 k = 0; k < stm->out_sz; k++) {
-                        if (temp_output & 0x1)
-                            stm->output_weights[i][j] -= (j % 2 == 0 ? -stm->dec_amt : stm->dec_amt);
-                        temp_output = temp_output >> 1;
+                    for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
+                        __int32 t = stm->input_targets[i][k];
+                        stm->input_weights[i][k] -=
+                            (stm->hidden[0]->firings[t] ? stm->dec_amt : -stm->dec_amt);
                     }
-                }
+
+            // hidden layers: layer c drives layer c + 1
+            for (__int32 c = 0; c + 1 < stm->hidden_ct; c++)
+                for (__int32 i = 0; i < stm->hidden_sz; i++)
+                    if (stm->hidden[c]->firings[i])
+                        for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
+                            __int32 t = stm->hidden[c]->targets[i][k];
+                            stm->hidden[c]->weights[i][k] -=
+                                (stm->hidden[c + 1]->firings[t] ? stm->dec_amt : -stm->dec_amt);
+                        }
+
+            // output layer: last hidden layer into the action bits that fired
+            for (__int32 i = 0; i < stm->hidden_sz; i++)
+                if (stm->hidden[stm->hidden_ct - 1]->firings[i])
+                    for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
+                        __int32 t = stm->output_targets[i][j];
+                        stm->output_weights[i][j] -=
+                            (((output >> t) & 0x1) ? stm->dec_amt : -stm->dec_amt);
+                    }
 
         }
 
@@ -1148,63 +1225,57 @@ void cycle(AGI_Sys * stm) {
         // check if current cycle is stm->cycles_to_dec. If so, bitwise shift down by one bit, then set current cycle back to 0.
             // if any new weights reach zero, retarget artificial neuron to next neuron higher than current neuron mod layer size (% stm->hidden_sz)
 
-        if (cycle % stm->cycles_to_dec == 0) {
+        // Periodic decay: halve every weight, and re-seed any connection that
+        // has decayed away so it comes back somewhere useful.
+        //
+        // Rewritten because the original could not do that safely. It halved
+        // `input_weights[i][j]` while assigning to `input_weights[i*in_sz+j][k]`,
+        // so it read a different connection than it wrote; it filled its
+        // `exists` scratch array with `exists[k] = false` inside a loop over
+        // `l`, leaving the array uninitialised and the following scan reading
+        // indeterminate memory; that scan had no termination guard; and the
+        // output stage indexed a 4-element array with `ix % hidden_sz >> 1`,
+        // which parses as `(ix % hidden_sz) >> 1` and runs off the end.
+        //
+        // `/ 2` rather than `>> 1`: an arithmetic right shift of a negative
+        // value rounds toward negative infinity, so -1 stays -1 forever and a
+        // negative weight can never decay to zero to be re-seeded.
+        //
+        // Re-seeding draws from the same mixer instantiate() uses, varied by
+        // the cycle so a connection does not come back exactly as it began.
+        if (cycle > 0 && cycle % stm->cycles_to_dec == 0) {
 
-            for (__int32 i = 0; i < stm->In_Q_ct; i++)
-                for (__int32 j = 0 ; j < stm->in_sz; j++)
+            for (__int32 i = 0; i < stm->in_sz * stm->In_Q_ct; i++)
+                for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
+                    stm->input_weights[i][k] /= 2;
+                    if (stm->input_weights[i][k] == 0) {
+                        stm->input_targets[i][k] =
+                            rzn_seed(i + cycle, k, RZN_SALT_IN_TARGET) % stm->hidden_sz;
+                        stm->input_weights[i][k] =
+                            rzn_seed_weight(i + cycle, k, RZN_SALT_IN_WEIGHT);
+                    }
+                }
+
+            for (__int32 c = 0; c < stm->hidden_ct; c++)
+                for (__int32 i = 0; i < stm->hidden_sz; i++)
                     for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
-                        stm->input_weights[i * stm->in_sz + j][k] = stm->input_weights[i][j] >> 1;
-                        if (stm->input_weights[i * stm->in_sz + j][k] == 0) {
-                            bool* exists = new bool[stm->in_sz * stm->In_Q_ct];
-                            for (__int32 l = 0; l < stm->in_sz * stm->In_Q_ct; l++)
-                                exists[k] = false;
-                            for (__int32 l = 0; l < stm->In_Q_ct; l++)
-                                for (__int32 m = 0; m < stm->in_sz; m++)
-                                    if ((stm->Input_Queue[l] >> m ) & 0x1)
-                                        exists[l * stm->in_sz + m] = true;
-                            __int32 ix = stm->input_targets[i * stm->in_sz + j][k] + 1;
-                            while (!exists[ix % (stm->In_Q_ct * stm->in_sz)])
-                                ix++;
-                            stm->input_targets[i * stm->in_sz + j][k] = ix % (stm->in_sz * stm->In_Q_ct);
-                            stm->input_weights[i * stm->in_sz + j][k] = k % 2 == 0 ? -16384 : 16384;
-                            delete[] exists;
+                        stm->hidden[c]->weights[i][k] /= 2;
+                        if (stm->hidden[c]->weights[i][k] == 0) {
+                            stm->hidden[c]->targets[i][k] =
+                                rzn_seed(c * 7919 + i + cycle, k, RZN_SALT_HID_TARGET) % stm->hidden_sz;
+                            stm->hidden[c]->weights[i][k] =
+                                rzn_seed_weight(c * 7919 + i + cycle, k, RZN_SALT_HID_WEIGHT);
                         }
                     }
 
-            for (__int32 i = 0; i < stm->hidden_ct; i++)
-                for (__int32 j = 0; j < stm->hidden_sz; j++)
-                    for (__int32 k = 0; k < stm->hidden_sz >> 1; k++) {
-                        stm->hidden[i]->weights[j][k] = stm->hidden[i]->weights[j][k] >> 1;
-                        if (stm->hidden[i]->weights[j][k] == 0) {
-                            bool* exists = new bool[stm->hidden_sz];
-                            for (__int32 l = 0; l < stm->hidden_sz; l++)
-                                exists[l] = false;
-                            for (__int32 l = 0; l < stm->hidden_sz >> 1; l++)
-                                exists[stm->hidden[i]->targets[j][l]] = true;
-                            __int32 ix = stm->hidden[i]->targets[j][k] + 1;
-                            while (!exists[ix % (stm->hidden_sz >> 1)])
-                                ix++;
-                            stm->hidden[i]->targets[j][k] = ix % stm->hidden_sz;
-                            stm->hidden[i]->weights[j][k] = k % 2 == 0 ? -16384 : 16384;
-                            delete[] exists;
-                        }
-            }
             for (__int32 i = 0; i < stm->hidden_sz; i++)
                 for (__int32 j = 0; j < stm->out_sz >> 1; j++) {
-                    stm->output_weights[i][j] = stm->output_weights[i][j] >> 1;
+                    stm->output_weights[i][j] /= 2;
                     if (stm->output_weights[i][j] == 0) {
-                        bool* exists = new bool[stm->out_sz];
-                        for (__int32 k = 0; k < stm->out_sz; k++)
-                            exists[k] = false;
-                        for (__int32 k = 0; k < stm->out_sz >> 1; k++)
-                            if (stm->output_targets[i][k])
-                                exists[k] = true;
-                        __int32 ix = stm->output_targets[i][j] + 1;
-                        while (!exists[ix % stm->hidden_sz >> 1])
-                            ix++;
-                        stm->output_targets[i][j] = ix % stm->out_sz;
-                        stm->output_weights[i][j] = j % 2 == 0 ? -16384 : 16384;
-                        delete[] exists;
+                        stm->output_targets[i][j] =
+                            rzn_seed(i + cycle, j, RZN_SALT_OUT_TARGET) % stm->out_sz;
+                        stm->output_weights[i][j] =
+                            rzn_seed_weight(i + cycle, j, RZN_SALT_OUT_WEIGHT);
                     }
                 }
         }
