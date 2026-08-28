@@ -18,6 +18,13 @@
 #define RZNAI_AGI_MAX_CYCLES 2000000000
 #endif
 
+// Bits decoded from each Input_Queue word by perform_iann(). Raising it lets a
+// sensor front end deliver a wider payload -- but hidden_sz is in_sz * In_Q_ct
+// * 2, so the hidden layer and every weight array grow with it.
+#ifndef RZNAI_AGI_IN_SZ
+#define RZNAI_AGI_IN_SZ 16
+#endif
+
 using namespace std;
 
 void simp_queue_enqueue(Simp_Queue* queue, Simp_Queue* parm) {
@@ -215,7 +222,7 @@ AGI_Sys * instantiate() {
 
     AGI_Sys * ret = new AGI_Sys();
 
-    ret->in_sz = 16;
+    ret->in_sz = RZNAI_AGI_IN_SZ;
     ret->out_sz = 4;
     ret->out_addr_sz = 2;
     ret->sensory_bits = 1;
