@@ -1,0 +1,57 @@
+name: Computational Infrastructure Verification Pipeline
+
+on:
+  push:
+    branches: [ "main", "development" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test-native:
+    name: Native Toolchain Compilation Check
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        compiler: [ {cc: gcc, cxx: g++}, {cc: clang, cxx: clang++} ]
+
+    steps:
+    - name: Checkout Repository Codebase
+      uses: actions/checkout@v4
+
+    - name: Configure Linux Build Environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build
+
+    - name: Compile and Verify RZNAI_AGI Module
+      env:
+        CC: ${{ matrix.compiler.cc }}
+        CXX: ${{ matrix.compiler.cxx }}
+      run: |
+        if [ -d "RZNAI_AGI" ]; then
+          cd RZNAI_AGI
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ./build/rzn_agi_node
+          cd ..
+        else
+          echo "[Pipeline Warning]: RZNAI_AGI workspace node directory skipped."
+        fi
+
+    - name: Compile and Verify EverythingEquationApp Module
+      env:
+        CC: ${{ matrix.compiler.cc }}
+        CXX: ${{ matrix.compiler.cxx }}
+      run: |
+        if [ -d "EverythingEquationApp" ]; then
+          cd EverythingEquationApp
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          cd ..
+        else
+          echo "[Pipeline Warning]: EverythingEquationApp workspace node directory skipped."
+        fi
