@@ -1,0 +1,17 @@
+your-github-workspace/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── EverythingEquationApp/
+│   ├── CMakeLists.txt
+│   ├── include/
+│   │   └── IEquationEngine.h
+│   └── src/
+│       └── StandardSolver.cpp
+└── RZNAI_AGI/
+    ├── CMakeLists.txt
+    ├── include/
+    │   └── AgiBroker.h
+    └── src/
+        ├── AgiBroker.cpp
+        └── main.cpp
